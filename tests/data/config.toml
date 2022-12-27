@@ -1,0 +1,50 @@
+int = 1
+name = "Mike"
+"10xPI" = 31.4159265
+some = 999999999999999
+debug_mode = true
+toml = 2
+config = 3
+
+[input]
+int = 5
+[input.data]
+frame = 10
+[input.data.img]
+frame_rate = 16000
+
+[person]
+name = "James"
+surname = "McGill"
+
+[json_toml]
+name = "James"
+surname = "McGill"
+
+[toml_yml]
+name = "James"
+surname = "McGill"
+
+[toml_person]
+name = "James"
+surname = "McGill"
+
+[[fruits]]
+name = "apple"
+
+[fruits.physical]
+color = "red"
+shape = "round"
+
+[[fruits.varieties]]
+name = "red delicious"
+
+[[fruits.varieties]]
+name = "granny smith"
+
+
+[[fruits]]
+name = "banana"
+
+[[fruits.varieties]]
+name = "plantain"

@@ -1,0 +1,46 @@
+{
+    "int": 1,
+    "name": "Mike",
+    "10xPI": 31.4159265,
+    "none": null,
+    "some": 999999999999999,
+    "debug_mode": true,
+    "convenient_phone_map": {
+        "Mike": 89650000000,
+        "James": 79645553535,
+        "Money": 89991113511
+    },
+    "array_of_enums": [
+        "Var1",
+        "Var3",
+        "Var3",
+        {
+            "Var2": 5
+        }
+    ],
+    "class": {
+        "name": "Mike",
+        "addr": "Moscow"
+    },
+    "json_person": {
+        "name": "Charles",
+        "surname": "McGill"
+    },
+    "json_yml": {
+        "name": "Charles",
+        "surname": "McGill"
+    },
+    "json_toml": {
+        "name": "Charles",
+        "surname": "McGill"
+    },
+    "person": {
+        "name": "Charles",
+        "surname": "McGill"
+    },
+    "map_even": {
+        "1": false,
+        "2": true,
+        "42": true
+    }
+}

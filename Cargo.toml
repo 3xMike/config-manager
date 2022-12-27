@@ -1,0 +1,19 @@
+[workspace]
+members = ["config-manager-proc", "examples"]
+
+[package]
+name = "config-manager"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+clap = { version = "4.0.29", features = ["derive", "cargo"] }
+config = "0.13.0"
+config-manager-proc = { path = "./config-manager-proc", version = "0.1.0" }
+ctor = "0.1.23"
+deser-hjson = "1.0.2"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0.80"
+
+[dev-dependencies]
+envmnt = "0.10.4"

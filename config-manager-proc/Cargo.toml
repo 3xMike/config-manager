@@ -1,0 +1,20 @@
+[package]
+name = "config-manager-proc"
+version = "0.1.0"
+edition = "2021"
+authors = [
+    "Mikhail Mikhailov <m.mikhailov@kryptonite.ru>",
+    "Nikolay Pakharev <n.pakharev@kryptonite.ru>",
+]
+
+[lib]
+proc-macro = true
+
+[dependencies]
+convert_case = "0.5"
+proc-macro2 = "1.0"
+quote = "1.0"
+strum = "0.24.0"
+strum_macros = "0.24.0"
+syn = { version = "1.0", features = ["full", "extra-traits"] }
+unzip-n = "0.1.2"

@@ -1,0 +1,21 @@
+[package]
+name = "examples"
+authors = [
+    "Mikhail Mikhailov <m.mikhailov@kryptonite.ru>",
+    "Nikolay Pakharev <n.pakharev@kryptonite.ru>",
+]
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[[bin]]
+name = "demo"
+path = "src/demo.rs"
+[[bin]]
+name = "json_syntax"
+path = "src/json_syntax.rs"
+
+[dependencies]
+config-manager = { path = "../../config-manager" }
+serde = { version = "1.0", features = ["derive"] }

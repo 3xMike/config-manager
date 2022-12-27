@@ -1,0 +1,35 @@
+employees:
+  martin:
+      name: Martin D'vloper
+      job: Developer
+      skills:
+        - python
+        - perl
+        - pascal
+  tabitha:
+      name: Tabitha Bitumen
+      job: Developer
+      skills:
+        - lisp
+        - fortran
+        - erlang  
+# On, off, ... booleans not working with crate config 
+bool_list:
+  - true
+  - false
+  - true
+  - false
+none: ~
+
+yaml_person:
+  name: Saul
+  surname: Goodman
+json_yml:
+  name: Saul
+  surname: Goodman
+toml_yml:
+  name: Saul
+  surname: Goodman
+person:
+  name: Saul
+  surname: Goodman
