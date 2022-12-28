@@ -17,5 +17,5 @@ name = "json_syntax"
 path = "src/json_syntax.rs"
 
 [dependencies]
-config-manager = { path = "../../config-manager" }
+config-manager = { path = ".." }
 serde = { version = "1.0", features = ["derive"] }

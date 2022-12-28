@@ -25,6 +25,7 @@ struct ApplicationConfig {
     #[source(clap(long, short = 'p'), env = "APP_MODEL_PATH", config)]
     model_path: String,
     #[source(env, config, default = 0)]
+    prediction_delay: u64,
 }
 ```
 In the example above, to set the value of the `model_path` field, a user may provide:

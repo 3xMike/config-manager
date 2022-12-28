@@ -6,6 +6,15 @@ authors = [
     "Mikhail Mikhailov <m.mikhailov@kryptonite.ru>",
     "Nikolay Pakharev <n.pakharev@kryptonite.ru>",
 ]
+description = "Macro implementation for config-manager-rs derives"
+repository = "https://github.com/Kryptonite-RU/config-manager-rs/tree/main/config-manager-proc"
+license = "MIT"
+keywords = ["macro", "derive", "proc_macro", "config", "configuration"]
+categories = [
+    "config",
+    "command-line-interface",
+    "development-tools::procedural-macro-helpers",
+]
 
 [lib]
 proc-macro = true

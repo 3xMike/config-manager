@@ -9,19 +9,19 @@ use super::attributes::*;
 use crate::*;
 
 fn str_to_config_format_repr<T: AsRef<str>>(s: T) -> String {
-    let accepted_formats = HashSet::from(["json", "json5", "toml", "yaml", "ron"]);
-    if let Some(accepted_format) = accepted_formats.get(s.as_ref()) {
-        let capitalize_first = |s: &str| -> String {
-            let mut chars = s.chars();
-            let first_char = chars.next().unwrap();
-            first_char.to_uppercase().to_string() + &chars.collect::<String>()
-        };
+    match s.as_ref() {
+        "json" | "json5" | "toml" | "yaml" | "ron" => {
+            let capitalize_first = |s: &str| -> String {
+                let mut chars = s.chars();
+                let first_char = chars.next().unwrap();
+                first_char.to_uppercase().to_string() + &chars.collect::<String>()
+            };
 
-        let accepted_format = capitalize_first(accepted_format);
-        let pref = "::config_manager::__private::config::FileFormat::".to_string();
-        pref + &accepted_format
-    } else {
-        panic!("{} format is not supported", s.as_ref())
+            let accepted_format = capitalize_first(s.as_ref());
+            let pref = "::config_manager::__private::config::FileFormat::".to_string();
+            pref + &accepted_format
+        }
+        _ => panic!("{} format is not supported", s.as_ref()),
     }
 }
 
