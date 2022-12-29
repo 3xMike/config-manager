@@ -82,7 +82,7 @@
 //!     dbg!(MethodConfig::parse().unwrap());
 //! }
 //! ```
-//! Run in [the repository](https://gitlab.kryptodev.ru/dev/research/rust/config-manager)
+//! Run in [the repository](https://github.com/Kryptonite-RU/config-manager-rs)
 //! ```console
 //! cargo run --package examples --bin demo -- --config="examples/config.toml" --a=5
 //! ```
