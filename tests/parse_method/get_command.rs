@@ -27,7 +27,7 @@ fn get_command() {
     let command = Config::get_command();
 
     assert_eq!(command.get_about(), None);
-    assert_eq!(command.get_author(), Some(clap::crate_authors!()));
+    assert_eq!(command.get_author(), Some(clap::crate_authors!("\n")));
     assert_eq!(command.get_version(), Some(clap::crate_version!()));
     assert_eq!(command.get_arguments().collect::<Vec<_>>(), &[&a, &c, &e]);
 }
