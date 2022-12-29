@@ -46,7 +46,7 @@ For further understanding of project syntax and features, it is recommended to v
 ```rust
 use std::collections::HashMap;
 
-use config_manager::config;
+use config_manager::{config, ConfigInit};
 
 const SUFFIX: &str = "_env";
 
@@ -56,17 +56,16 @@ const SUFFIX: &str = "_env";
     env_prefix = "demo",
     file(
         format = "toml",
-        clap(long = "config", short, help = "path to configuration file"),
+        clap(long = "config", short = 'c', help = "path to configuration file"),
         env = "demo_config",
-        optional = true,
         default = "./config.toml"
-    ),
-    global_name = "CFG"
+    )
 )]
 struct MethodConfig {
+    #[source(clap(long, short))]
     a: i32,
     #[source(
-        env(init_from = "format!(\"b{}\", SUFFIX)"),
+        env(init_from = "&format!(\"b{}\", SUFFIX)"),
         default = "\"abc\".to_string()"
     )]
     b: String,
@@ -77,8 +76,9 @@ struct MethodConfig {
 }
 
 fn main() {
-    dbg!(&*CFG);
+    dbg!(MethodConfig::parse().unwrap());
 }
+
 ```
 Run
 ```console
