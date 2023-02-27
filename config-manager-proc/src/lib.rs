@@ -12,7 +12,7 @@ use quote::{quote, ToTokens};
 use syn::{parse::Parser, punctuated::Punctuated, *};
 
 use generator::*;
-use utils::{config::*, field::*, field_to_tokens, parser::*, top_level::*};
+use utils::{config::*, field::*, parser::*, top_level::*};
 
 /// Macro generating an implementation of the `ConfigInit` trait
 /// or constructing global variable. \
@@ -85,14 +85,8 @@ pub fn generate_config(input: TokenStream0) -> TokenStream0 {
                 process_flatten_field(field)
             } else if field_is_subcommand(&field) {
                 process_subcommand_field(field, &debug_cmd_input)
-            } else if field_is_source(&field) {
-                process_field(field, &table_name)
             } else {
-                panic!(
-                    "Error: each field must be annotated with one of the following: \
-                     source/flatten/subcommand (field's name: \"{}\")",
-                    field_to_tokens(&field)
-                )
+                process_field(field, &table_name)
             };
             ((name, initialization), clap_field)
         })
@@ -140,14 +134,8 @@ pub fn generate_flatten(input: TokenStream0) -> TokenStream0 {
                 process_flatten_field(field)
             } else if field_is_subcommand(&field) {
                 panic!("subcommands are forbidden in the nested structures")
-            } else if field_is_source(&field) {
-                process_field(field, &table_name)
             } else {
-                panic!(
-                    "Error: each field must be annotated with one of the following: \
-                     source/flatten (field's name: \"{}\")",
-                    field_to_tokens(&field)
-                )
+                process_field(field, &table_name)
             };
             ((name, initialization), clap_field)
         })

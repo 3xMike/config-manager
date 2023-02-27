@@ -29,16 +29,9 @@ pub(crate) struct ProcessFieldResult {
     pub(crate) initialization: TokenStream,
 }
 
-pub(crate) fn field_is_source(field: &Field) -> bool {
-    field
-        .attrs
-        .iter()
-        .any(|attr| compare_attribute_name(attr, SOURCE_KEY))
-}
-
 pub(crate) fn process_field(field: Field, table_name: &Option<String>) -> ProcessFieldResult {
     let field_name = field.ident.clone().expect("Unnamed fields are forbidden");
-    if number_of_crate_attribute(&field) != 1 {
+    if number_of_crate_attribute(&field) > 1 {
         panic!(
             "Error: source attribute must be the only attribute of the field (field's name: \
              \"{}\")",

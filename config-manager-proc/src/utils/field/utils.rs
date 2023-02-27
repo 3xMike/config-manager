@@ -193,6 +193,7 @@ impl Display for FieldAttribute {
     }
 }
 
+#[derive(Default)]
 pub(super) struct Env {
     pub(super) inner: Option<String>,
 }
@@ -230,6 +231,7 @@ impl Env {
     }
 }
 
+#[derive(Default)]
 pub(super) struct Config {
     pub(super) key: Option<String>,
     pub(super) table: Option<String>,
@@ -343,6 +345,12 @@ pub(super) fn extract_attributes(field: Field, table_name: Option<String>) -> Ex
                 _ => panic!("source attribute must match #[source(...)]"),
             },
         }
+    } else {
+        res.variables = vec![
+            FieldAttribute::Clap(ClapFieldParseResult::default()),
+            FieldAttribute::Env(Env::default()),
+            FieldAttribute::Config(Config::default()),
+        ];
     }
 
     res
