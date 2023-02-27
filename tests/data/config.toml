@@ -5,6 +5,7 @@ some = 999999999999999
 debug_mode = true
 toml = 2
 config = 3
+int_env = 100
 
 [input]
 int = 5

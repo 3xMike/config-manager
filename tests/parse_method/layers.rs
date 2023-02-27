@@ -90,3 +90,27 @@ fn short_sources() {
         config: 3,
     })
 }
+
+#[test]
+fn default_priority() {
+    #[derive(Debug, PartialEq)]
+    #[config(
+        file(format = "toml", default = "./tests/data/config.toml"),
+        env_prefix = "",
+        __debug_cmd_input__("--int=0")
+    )]
+    struct Cfg {
+        int: i32,
+        int_env: i32,
+        toml: i32,
+    }
+
+    set_env("int_env", 1);
+    set_env("int", 1000);
+
+    assert_ok_and_compare(&Cfg {
+        int: 0,
+        int_env: 1,
+        toml: 2,
+    })
+}
