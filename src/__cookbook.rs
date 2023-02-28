@@ -6,11 +6,10 @@
 //! 2. [Intro](#intro)
 //! 3. [Options](#options)
 //! 4. [Structure level attributes](#structure-attributes)
-//!     1. [global_name](#global-name)
-//!     2. [env_prefix](#env_prefix)
-//!     3. [file](#file)
-//!     4. [clap](#clap)
-//!     5. [table](#table)
+//!     1. [env_prefix](#env_prefix)
+//!     2. [file](#file)
+//!     3. [clap](#clap)
+//!     4. [table](#table)
 //! 5. [Field level attributes](#field-attributes)
 //!     1. [source](#source)
 //!         - [default](#default)
@@ -105,11 +104,8 @@
 //! More information can be found in the [ConfigOption](../enum.ConfigOption.html) documentation.
 //!
 //! ## Structure attributes
-//! ### `global name`
-//! If assigned, a global variable with the specified name will be created instead of deriving ConfigInit trait.
-//!
 //! ### `env_prefix`
-//! Prefix of the environment variables. The default prefix is the binary file name.
+//! Prefix of the environment variables. If not stated, the prefix will not be added.
 //! Thus, the `iter` field in the example below will be searched in the environment by the `demo_iter` key.
 //! ```
 //! # use config_manager::config;
@@ -124,7 +120,8 @@
 //! ```
 //! **Notes**
 //! - The delimiter ('_') is placed automatically
-//! - If a prefix isn't required, set `env_prefix = ""`
+//! - `env_prefix = ""` will not add any prefix
+//! - One can use `env_prefix` (without a value) to set the binary file name as a prefix
 //! - `env`, `env_prefix` and similar attributes are case-insensitive. If both the `demo_iter` and
 //! `DEMO_ITER` environment variables are present, which of these two will be parsed *is not defined*
 //!
@@ -179,6 +176,12 @@
 //! ## Field attributes
 //! Only fields can be annotated with the following attributes and only one of them can be assigned to a field.
 //!
+//! **Note:** if a field is not annotated with any of the following attributes,
+//! it will be parsed using the default source order:\
+//! 1. clap
+//! 2. env
+//! 3. config
+//!
 //! ### Source
 //! If a field is annotated with the `source` attribute, at least one of the following nested attributes must be present.
 //!
@@ -223,8 +226,9 @@
 //! #### `clap`
 //! Clap-crate attributes. Available nested attributes: `help`, `long_help`, `short`, `long`,
 //! `flatten`, `subcommand`.
-//! **Note:** the default `long` and `short` values (`#[clap(long)]` and `#[clap(short)]`) is the field name and it's first letter respectively.
+//! **Note:** the default `long` and `short` values (`#[clap(long)]` and `#[clap(short)]`) is the field name and it's first letter respectively. \
 //!
+//! In addition, the following attribute can be used.
 //! #### `deserialize_with`
 //! Custom deserialization of the field. The deserialization function must have the signature
 //! ```ignore
@@ -283,7 +287,7 @@
 //! #### Flatten attributes
 //! Flatten struct may have the following helper attributes: `table`, `flatten`, `source` (they work the same way as the described above ones).
 //! ### Subcommand
-//! If a field is annotated with the `flatten` attribute, it will be taken as a `clap` subcommand
+//! If a field is annotated with the `subcommand` attribute, it will be taken as a `clap` subcommand
 //! (see [clap documentation](https://docs.rs/clap/latest/clap/_derive/_tutorial/index.html#subcommands) for more info).
 //! The field's type must implement `clap::Subcommand` and `serde::Deserialize`.
 //!

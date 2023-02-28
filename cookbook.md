@@ -5,7 +5,6 @@
     - [Note](#note)
   - [Options](#options)
   - [Structure attributes](#structure-attributes)
-    - [`global name`](#global-name)
     - [`env_prefix`](#env_prefix)
     - [`file`](#file)
     - [`clap`](#clap)
@@ -103,11 +102,8 @@ The key point here is the fact that the options take precedence over the corresp
 More information can be found in the `ConfigOption` documentation. 
 
 ## Structure attributes
-### `global name`
-If assigned, a global variable with the specified name will be created instead of deriving ConfigInit trait.
-
 ### `env_prefix`
-Prefix of the environment variables. The default prefix is the binary file name.
+Prefix of the environment variables. If not stated, the prefix will not be added.
 Thus, the `iter` field in the example below will be searched in the environment by the `demo_iter` key.
 ```rust
 #[config(
@@ -120,7 +116,8 @@ struct AppConfig {
 ```
 **Notes**
 - The delimiter ('_') is placed automatically
-- If a prefix isn't required, set `env_prefix = ""`
+- `env_prefix = ""` will not add any prefix
+- One can use `env_prefix` (without a value) to set the binary file name as a prefix
 - `env`, `env_prefix` and similar attributes are case-insensitive. If both the `demo_iter` and
 `DEMO_ITER` environment variables are present, which of these two will be parsed *is not defined*
 
@@ -171,6 +168,11 @@ Field `frames` will be searched in the "input.data" table of the configuration f
 ## Field attributes
 Only fields can be annotated with the following attributes and only one of them can be assigned to a field.
 
+**Note:** if a field is not annotated with any of the following attributes,
+it will be parsed using the default source order:\
+1. clap
+2. env
+3. config
 ### Source
 If a field is annotated with the `source` attribute, at least one of the following nested attributes must be present.
 
@@ -211,8 +213,9 @@ configuration file by the `frame_rate` key.
 #### `clap`
 Clap-crate attributes. Available nested attributes: `help`, `long_help`, `short`, `long`,
 `flatten`, `subcommand`.
-**Note:** the default `long` and `short` values (`#[clap(long)]` and `#[clap(short)]`) is the field name and it's first letter.
+**Note:** the default `long` and `short` values (`#[clap(long)]` and `#[clap(short)]`) is the field name and it's first letter. \
 
+In addition, the following attribute can be used.
 #### `deserialize_with`
 Custom deserialization of the field. The deserialization function must have the signature
 ```rust
@@ -268,7 +271,7 @@ struct NestedConfig {
 #### Flatten attributes
 Flatten struct may have the following helper attributes: `table`, `flatten`, `source` (they work the same way as the described above ones).
 ### Subcommand
-If a field is annotated with the `flatten` attribute, it will be taken as a `clap` subcommand
+If a field is annotated with the `subcommand` attribute, it will be taken as a `clap` subcommand
 (see [clap documentation](https://docs.rs/clap/latest/clap/_derive/_tutorial/index.html#subcommands) for more info).
 The field's type must implement `clap::Subcommand` and `serde::Deserialize`.
 
