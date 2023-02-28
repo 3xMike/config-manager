@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2022 JSRPC “Kryptonite”
 
-mod utils;
+pub(crate) mod utils;
 
 use super::{attributes::*, format_to_tokens};
 use crate::*;
@@ -29,7 +29,11 @@ pub(crate) struct ProcessFieldResult {
     pub(crate) initialization: TokenStream,
 }
 
-pub(crate) fn process_field(field: Field, table_name: &Option<String>) -> ProcessFieldResult {
+pub(crate) fn process_field(
+    field: Field,
+    table_name: &Option<String>,
+    default_order: &Option<ExtractedAttributes>,
+) -> ProcessFieldResult {
     let field_name = field.ident.clone().expect("Unnamed fields are forbidden");
     if number_of_crate_attribute(&field) > 1 {
         panic!(
@@ -39,7 +43,16 @@ pub(crate) fn process_field(field: Field, table_name: &Option<String>) -> Proces
         );
     }
 
-    let attributes_order = extract_attributes(field, table_name.clone());
+    let attributes_order = extract_attributes(field, table_name)
+        .or_else(|| default_order.clone())
+        .unwrap_or_else(|| ExtractedAttributes {
+            variables: vec![
+                FieldAttribute::Clap(std::default::Default::default()),
+                FieldAttribute::Env(std::default::Default::default()),
+                FieldAttribute::Config(std::default::Default::default()),
+            ],
+            ..std::default::Default::default()
+        });
 
     ProcessFieldResult {
         initialization: attributes_order.gen_init(&field_name.to_string()),

@@ -62,6 +62,7 @@ pub fn generate_config(input: TokenStream0) -> TokenStream0 {
         configs,
         debug_cmd_input,
         table_name,
+        default_order,
     } = AppTopLevelInfo::extract(&input.attrs);
 
     let class: DataStruct = match input.data {
@@ -86,7 +87,7 @@ pub fn generate_config(input: TokenStream0) -> TokenStream0 {
             } else if field_is_subcommand(&field) {
                 process_subcommand_field(field, &debug_cmd_input)
             } else {
-                process_field(field, &table_name)
+                process_field(field, &table_name, &default_order)
             };
             ((name, initialization), clap_field)
         })
@@ -111,6 +112,7 @@ pub fn generate_flatten(input: TokenStream0) -> TokenStream0 {
     let input = parse_macro_input!(input as DeriveInput);
 
     let table_name = extract_table_name(&input.attrs);
+    let default_order = extract_source_order(&input.attrs);
 
     let class_ident = input.ident;
     let class: DataStruct = match input.data {
@@ -135,7 +137,7 @@ pub fn generate_flatten(input: TokenStream0) -> TokenStream0 {
             } else if field_is_subcommand(&field) {
                 panic!("subcommands are forbidden in the nested structures")
             } else {
-                process_field(field, &table_name)
+                process_field(field, &table_name, &default_order)
             };
             ((name, initialization), clap_field)
         })

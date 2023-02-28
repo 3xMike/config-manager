@@ -13,6 +13,7 @@ pub(crate) const SOURCE_KEY: &str = "source";
 pub(crate) const CONFIG_FILE_KEY: &str = "file";
 pub(crate) const DEBUG_INPUT_KEY: &str = "__debug_cmd_input__";
 pub(crate) const TABLE_NAME_KEY: &str = "table";
+pub(crate) const SOURCE_ORDER_KEY: &str = "default_order";
 pub(crate) const FLATTEN: &str = "flatten";
 pub(crate) const SUBCOMMAND: &str = "subcommand";
 
