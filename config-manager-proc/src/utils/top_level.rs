@@ -81,19 +81,26 @@ pub(crate) fn extract_clap_app(attrs: &[Attribute]) -> NormalClapAppInfo {
 }
 
 pub(crate) fn extract_env_prefix(attrs: &[Attribute]) -> Option<String> {
-    attrs
+    match attrs
         .iter()
         .find(|a| compare_attribute_name(a, ENV_PREFIX_KEY))
-        .map(|atr| match atr.parse_meta() {
+    {
+        None => Some(String::new()),
+        Some(attr) => match attr.parse_meta() {
             Err(err) => panic!("Can't parse attribute as meta: {err}"),
             Ok(meta) => match meta {
+                Meta::Path(_) => None,
                 Meta::NameValue(MetaNameValue {
                     lit: Lit::Str(input_name),
                     ..
-                }) => input_name.value(),
-                _ => panic!("{ENV_PREFIX_KEY} must match #[{ENV_PREFIX_KEY} = \"...\"]"),
+                }) => Some(input_name.value()),
+                _ => panic!(
+                    "{ENV_PREFIX_KEY} must match #[{ENV_PREFIX_KEY} = \"...\"] or \
+                     #[{ENV_PREFIX_KEY}]"
+                ),
             },
-        })
+        },
+    }
 }
 
 pub(crate) fn extract_debug_cmd_input(attrs: &[Attribute]) -> Option<TokenStream> {
