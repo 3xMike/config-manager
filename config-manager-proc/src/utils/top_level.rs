@@ -146,7 +146,7 @@ pub(crate) fn extract_source_order(attrs: &[Attribute]) -> Option<ExtractedAttri
                     let mut res = ExtractedAttributes::default();
                     for meta in list.nested {
                         match meta {
-                            NestedMeta::Lit(Lit::Str(lit)) => match lit.value().as_str() {
+                            NestedMeta::Meta(Meta::Path(p)) => match path_to_string(&p).as_str() {
                                 CLAP_KEY => {
                                     res.variables.push(FieldAttribute::Clap(Default::default()))
                                 }
@@ -167,8 +167,8 @@ pub(crate) fn extract_source_order(attrs: &[Attribute]) -> Option<ExtractedAttri
                                 ),
                             },
                             other => panic!(
-                                "default_order nested attributes must be literals, error in meta: \
-                                 {}",
+                                "default_order nested attributes can be on of: {CLAP_KEY}, \
+                                 {ENV_KEY}, {CONFIG_KEY} and {DEFAULT}, error in meta: {}",
                                 other.to_token_stream()
                             ),
                         }

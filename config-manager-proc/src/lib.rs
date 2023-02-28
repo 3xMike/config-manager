@@ -48,6 +48,7 @@ pub fn config(attrs: TokenStream0, input: TokenStream0) -> TokenStream0 {
         global_name,
         file,
         table,
+        default_order,
         __debug_cmd_input__
     )
 )]
@@ -107,7 +108,7 @@ pub fn generate_config(input: TokenStream0) -> TokenStream0 {
 
 /// Annotated with this macro structure can be used
 /// as a flatten argument in the [config](attr.config.html) macro.
-#[proc_macro_derive(Flatten, attributes(source, flatten, subcommand, table))]
+#[proc_macro_derive(Flatten, attributes(source, flatten, subcommand, table, default_order))]
 pub fn generate_flatten(input: TokenStream0) -> TokenStream0 {
     let input = parse_macro_input!(input as DeriveInput);
 
