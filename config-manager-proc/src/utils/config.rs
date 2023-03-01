@@ -8,8 +8,8 @@ use strum::IntoEnumIterator;
 use super::attributes::*;
 use crate::*;
 
-fn str_to_config_format_repr<T: AsRef<str>>(s: T) -> String {
-    match s.as_ref() {
+fn str_to_config_format_repr(s: &str) -> String {
+    match s {
         "json" | "json5" | "toml" | "yaml" | "ron" => {
             let capitalize_first = |s: &str| -> String {
                 let mut chars = s.chars();
@@ -17,11 +17,11 @@ fn str_to_config_format_repr<T: AsRef<str>>(s: T) -> String {
                 first_char.to_uppercase().to_string() + &chars.collect::<String>()
             };
 
-            let accepted_format = capitalize_first(s.as_ref());
+            let accepted_format = capitalize_first(s);
             let pref = "::config_manager::__private::config::FileFormat::".to_string();
             pref + &accepted_format
         }
-        _ => panic!("{} format is not supported", s.as_ref()),
+        _ => panic!("{} format is not supported", s),
     }
 }
 
@@ -117,7 +117,7 @@ fn handle_file_attribute(
                                         .skip(1)
                                         .take(format_atr.len() - 2)
                                         .collect();
-                                    file_format = Some(str_to_config_format_repr(drop_fst_and_lst))
+                                    file_format = Some(str_to_config_format_repr(&drop_fst_and_lst))
                                 }
                             }
                         }
