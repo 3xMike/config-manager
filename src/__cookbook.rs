@@ -10,6 +10,7 @@
 //!     2. [file](#file)
 //!     3. [clap](#clap)
 //!     4. [table](#table)
+//!     5. [default source order](#default_order)
 //! 5. [Field level attributes](#field-attributes)
 //!     1. [source](#source)
 //!         - [default](#default)
@@ -173,21 +174,40 @@
 //! ```
 //! Field `frames` will be searched in the "input.data" table of the configuration file "config.toml".
 //!
+//! ### `default_order`
+//! The default order of any field that wasn't annotated with any of `source`,`flatten` or `subcommand`.\
+//! `clap`, `env`, `config` and `default` are all possible parameters.
+//! Each attribute will be applied to each unannotated field in a "short" form
+//! (i.e., form without value; for example, `#[source(default)]` means that
+//! `Default::default()` will be used as a default value. See the [source](#source) section for more information)
+//! **Example**
+//! ```
+//! # use config_manager::config;
+//! #
+//! #[config(default_order(env, clap, default))]
+//! struct Config {
+//!     rotation: f32,
+//! }
+//! ```
+//! It will be checked that the `ROTATION` environment variable is set; if not, the `--rotation` command line argument will be checked,
+//! and, lastly, the `Default::default()` will be assigned.
+//! **Note:** If this attribute isn't set, the default order is:
+//! 1. command line
+//! 2. environment variables
+//! 3. configuration files
+//!
 //! ## Field attributes
 //! Only fields can be annotated with the following attributes and only one of them can be assigned to a field.
 //!
 //! **Note:** if a field is not annotated with any of the following attributes,
-//! it will be parsed using the default source order:\
-//! 1. clap
-//! 2. env
-//! 3. config
+//! it will be parsed using the default source order (see the section above).
 //!
 //! ### Source
 //! If a field is annotated with the `source` attribute, at least one of the following nested attributes must be present.
 //!
 //! #### `default`
-//! Numeric literal or valid Rust code.
-//! If the field's type implement `std::default::Default`, the attribute can be set without value.
+//! Numeric literal or valid Rust code. \
+//! If the attribute is set without a value (`#[source(default)]`), the default value is `std::default::Default`.
 //!
 //! **Example**
 //! ```
@@ -204,12 +224,14 @@
 //! ```
 //!
 //! #### `env`
-//! Name of the environment variable to set the value from. If present, `env_prefix` (see above)
-//! is ignored. The case is ignored.
+//! The name of the environment variable from which the value is to be set.
+//! `env_prefix` (see above) is ignored if present with a value (`#[source(env = "...")]`).  The case is ignored. \
+//! If the attribute is set without value, the name of the environment variable to be set is `env_prefix + field_name`.
 //!
 //! #### `config`
 //! Name of the configuration file field to set the value from. It can contain dots: in this case
 //! the name will be parsed as the path of the field.\
+//! If the attribute is set without a value (`#[source(config)]`), the field name is the name of the configuration file field to be set. \
 //! **Example**
 //! ```
 //! # use config_manager::config;
@@ -227,6 +249,7 @@
 //! Clap-crate attributes. Available nested attributes: `help`, `long_help`, `short`, `long`,
 //! `flatten`, `subcommand`.
 //! **Note:** the default `long` and `short` values (`#[clap(long)]` and `#[clap(short)]`) is the field name and it's first letter respectively. \
+//! `#[source(clap)]` is equivalent to `#[source(clap(long))]` \
 //!
 //! In addition, the following attribute can be used.
 //! #### `deserialize_with`
