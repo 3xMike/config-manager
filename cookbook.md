@@ -22,8 +22,8 @@
     - [Subcommand](#subcommand)
   - [get\_command](#get_command)
 ## Examples
-There are [tests](https://github.com/Kryptonite-RU/config-manager-rs/tree/main/tests)
-and [examples](https://github.com/Kryptonite-RU/config-manager-rs/tree/main/examples) in
+There are [tests](https://github.com/3xMike/config-manager/tree/main/tests)
+and [examples](https://github.com/3xMike/config-manager/tree/main/examples) in
 the crate repository to get you started
 
 ## Intro

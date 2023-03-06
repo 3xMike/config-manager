@@ -11,7 +11,7 @@ authors = [
 ]
 description = "Crate to build config from environment, command line and files"
 readme = "README.md"
-repository = "https://github.com/Kryptonite-RU/config-manager-rs"
+repository = "https://github.com/3xMike/config-manager"
 license = "MIT"
 keywords = ["macro", "configuration", "environment", "command-line", "config"]
 categories = ["config", "development-tools", "command-line-utilities"]

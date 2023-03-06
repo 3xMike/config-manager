@@ -82,7 +82,7 @@
 //!     dbg!(MethodConfig::parse().unwrap());
 //! }
 //! ```
-//! Run in [the repository](https://github.com/Kryptonite-RU/config-manager-rs)
+//! Run in [the repository](https://github.com/3xMike/config-manager)
 //! ```console
 //! cargo run --package examples --bin demo -- --config="examples/config.toml" --a=5
 //! ```
