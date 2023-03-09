@@ -21,7 +21,7 @@ fn str_to_config_format_repr(s: &str) -> String {
             let pref = "::config_manager::__private::config::FileFormat::".to_string();
             pref + &accepted_format
         }
-        _ => panic!("{} format is not supported", s),
+        _ => panic!("{s} format is not supported"),
     }
 }
 

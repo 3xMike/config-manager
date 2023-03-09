@@ -276,7 +276,7 @@ pub(super) fn extract_attributes(
                         for arg in args {
                             match arg {
                                 NestedMeta::Lit(lit) => {
-                                    panic!("source attribute ({:#?}) can't be a literal", lit)
+                                    panic!("source attribute ({lit:#?}) can't be a literal")
                                 }
                                 NestedMeta::Meta(arg) => {
                                     match path_to_string(arg.path()).as_str() {

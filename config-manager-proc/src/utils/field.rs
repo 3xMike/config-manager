@@ -3,6 +3,8 @@
 
 pub(crate) mod utils;
 
+use std::default::Default;
+
 use super::{attributes::*, format_to_tokens};
 use crate::*;
 use utils::*;
@@ -47,11 +49,11 @@ pub(crate) fn process_field(
         .or_else(|| default_order.clone())
         .unwrap_or_else(|| ExtractedAttributes {
             variables: vec![
-                FieldAttribute::Clap(std::default::Default::default()),
-                FieldAttribute::Env(std::default::Default::default()),
-                FieldAttribute::Config(std::default::Default::default()),
+                FieldAttribute::Clap(Default::default()),
+                FieldAttribute::Env(Default::default()),
+                FieldAttribute::Config(Default::default()),
             ],
-            ..std::default::Default::default()
+            ..Default::default()
         });
 
     ProcessFieldResult {

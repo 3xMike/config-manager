@@ -106,7 +106,7 @@
 //!
 //! ## Structure attributes
 //! ### `env_prefix`
-//! Prefix of the environment variables. If not stated, the prefix will not be added.
+//! Prefix of the environment variables. If not specified, the prefix will not be added.
 //! Thus, the `iter` field in the example below will be searched in the environment by the `demo_iter` key.
 //! ```
 //! # use config_manager::config;
@@ -122,9 +122,21 @@
 //! **Notes**
 //! - The delimiter ('_') is placed automatically
 //! - `env_prefix = ""` will not add any prefix
-//! - One can use `env_prefix` (without a value) to set the binary file name as a prefix
 //! - `env`, `env_prefix` and similar attributes are case-insensitive. If both the `demo_iter` and
 //! `DEMO_ITER` environment variables are present, which of these two will be parsed *is not defined*
+//! - One can use `env_prefix` (without a value) to set the binary file name as a prefix
+//! **Example**
+//! ```
+//! # use config_manager::config;
+//! #
+//! #[config(env_prefix)]
+//! struct Config {
+//!     #[source(env)]
+//!     capacity: i32,
+//! }
+//! ```
+//! In the example above, the `capacity` field will be searched in the environment
+//! by the "*bin*_iter" key, where `bin` is the name of the executable file.
 //!
 //! ### `file`
 //! Description of the configuration file. Has the following nested attributes:
@@ -207,7 +219,8 @@
 //!
 //! #### `default`
 //! Numeric literal or valid Rust code. \
-//! If the attribute is set without a value (`#[source(default)]`), the default value is `std::default::Default`.
+//! If the attribute is set without a value (`#[source(default)]`),
+//! the default value is [`Default::default()`](https://doc.rust-lang.org/std/default/trait.Default.html#tymethod.default).
 //!
 //! **Example**
 //! ```
