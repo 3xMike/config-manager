@@ -136,7 +136,7 @@
 //! }
 //! ```
 //! In the example above, the `capacity` field will be searched in the environment
-//! by the "*bin*_iter" key, where `bin` is the name of the executable file.
+//! by the "*bin*_capacity" key, where `bin` is the name of the executable file.
 //!
 //! ### `file`
 //! Description of the configuration file. Has the following nested attributes:
