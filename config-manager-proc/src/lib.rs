@@ -12,7 +12,7 @@ use quote::{quote, ToTokens};
 use syn::{parse::Parser, punctuated::Punctuated, *};
 
 use generator::*;
-use utils::{config::*, field::*, field_to_tokens, parser::*, top_level::*};
+use utils::{config::*, field::*, parser::*, top_level::*};
 
 /// Macro generating an implementation of the `ConfigInit` trait
 /// or constructing global variable. \
@@ -48,6 +48,7 @@ pub fn config(attrs: TokenStream0, input: TokenStream0) -> TokenStream0 {
         global_name,
         file,
         table,
+        default_order,
         __debug_cmd_input__
     )
 )]
@@ -62,6 +63,7 @@ pub fn generate_config(input: TokenStream0) -> TokenStream0 {
         configs,
         debug_cmd_input,
         table_name,
+        default_order,
     } = AppTopLevelInfo::extract(&input.attrs);
 
     let class: DataStruct = match input.data {
@@ -85,14 +87,8 @@ pub fn generate_config(input: TokenStream0) -> TokenStream0 {
                 process_flatten_field(field)
             } else if field_is_subcommand(&field) {
                 process_subcommand_field(field, &debug_cmd_input)
-            } else if field_is_source(&field) {
-                process_field(field, &table_name)
             } else {
-                panic!(
-                    "Error: each field must be annotated with one of the following: \
-                     source/flatten/subcommand (field's name: \"{}\")",
-                    field_to_tokens(&field)
-                )
+                process_field(field, &table_name, &default_order)
             };
             ((name, initialization), clap_field)
         })
@@ -112,11 +108,12 @@ pub fn generate_config(input: TokenStream0) -> TokenStream0 {
 
 /// Annotated with this macro structure can be used
 /// as a flatten argument in the [config](attr.config.html) macro.
-#[proc_macro_derive(Flatten, attributes(source, flatten, subcommand, table))]
+#[proc_macro_derive(Flatten, attributes(source, flatten, subcommand, table, default_order))]
 pub fn generate_flatten(input: TokenStream0) -> TokenStream0 {
     let input = parse_macro_input!(input as DeriveInput);
 
     let table_name = extract_table_name(&input.attrs);
+    let default_order = extract_source_order(&input.attrs);
 
     let class_ident = input.ident;
     let class: DataStruct = match input.data {
@@ -140,14 +137,8 @@ pub fn generate_flatten(input: TokenStream0) -> TokenStream0 {
                 process_flatten_field(field)
             } else if field_is_subcommand(&field) {
                 panic!("subcommands are forbidden in the nested structures")
-            } else if field_is_source(&field) {
-                process_field(field, &table_name)
             } else {
-                panic!(
-                    "Error: each field must be annotated with one of the following: \
-                     source/flatten (field's name: \"{}\")",
-                    field_to_tokens(&field)
-                )
+                process_field(field, &table_name, &default_order)
             };
             ((name, initialization), clap_field)
         })

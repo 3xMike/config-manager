@@ -4,7 +4,7 @@
 use super::{super::attributes::*, *};
 use crate::*;
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub(crate) enum ClapOption<T> {
     #[default]
     None,
@@ -14,7 +14,7 @@ pub(crate) enum ClapOption<T> {
 
 type MaybeString = ClapOption<String>;
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub(crate) struct ClapFieldParseResult {
     pub(crate) long: MaybeString,
     pub(crate) short: MaybeString,

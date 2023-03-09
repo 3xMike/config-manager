@@ -49,11 +49,11 @@ impl ToTokens for NormalClapFieldInfo {
     }
 }
 
-#[derive(Default)]
-pub(super) struct ExtractedAttributes {
-    variables: Vec<FieldAttribute>,
-    default: Option<Default>,
-    deserializer: Option<String>,
+#[derive(Default, Clone)]
+pub(crate) struct ExtractedAttributes {
+    pub(crate) variables: Vec<FieldAttribute>,
+    pub(crate) default: Option<Default>,
+    pub(crate) deserializer: Option<String>,
 }
 
 impl ExtractedAttributes {
@@ -144,7 +144,8 @@ impl ExtractedAttributes {
     }
 }
 
-pub(super) enum FieldAttribute {
+#[derive(Clone)]
+pub(crate) enum FieldAttribute {
     Clap(ClapFieldParseResult),
     Env(Env),
     Config(Config),
@@ -193,7 +194,8 @@ impl Display for FieldAttribute {
     }
 }
 
-pub(super) struct Env {
+#[derive(Default, Clone)]
+pub(crate) struct Env {
     pub(super) inner: Option<String>,
 }
 
@@ -230,7 +232,8 @@ impl Env {
     }
 }
 
-pub(super) struct Config {
+#[derive(Default, Clone)]
+pub(crate) struct Config {
     pub(super) key: Option<String>,
     pub(super) table: Option<String>,
 }
@@ -249,101 +252,118 @@ impl Config {
     }
 }
 
-pub(super) struct Default {
+#[derive(Default, Clone)]
+pub(crate) struct Default {
     pub(super) inner: Option<String>,
 }
 
-pub(super) fn extract_attributes(field: Field, table_name: Option<String>) -> ExtractedAttributes {
+pub(super) fn extract_attributes(
+    field: Field,
+    table_name: &Option<String>,
+) -> Option<ExtractedAttributes> {
     let field_name = field.ident.expect("Unnamed fields are forbidden");
     let mut res = ExtractedAttributes::default();
 
-    if let Some(atr) = field
+    field
         .attrs
         .iter()
         .find(|a| compare_attribute_name(a, SOURCE_KEY))
-    {
-        match atr.parse_meta() {
-            Err(err) => panic!("Can't parse attribute as meta: {err}"),
-            Ok(meta) => match meta {
-                Meta::List(MetaList { nested: args, .. }) => {
-                    for arg in args {
-                        match arg {
-                            NestedMeta::Lit(lit) => {
-                                panic!("source attribute ({:#?}) can't be a literal", lit)
+        .map(|atr| {
+            match atr.parse_meta() {
+                Err(err) => panic!("Can't parse attribute as meta: {err}"),
+                Ok(meta) => match meta {
+                    Meta::List(MetaList { nested: args, .. }) => {
+                        for arg in args {
+                            match arg {
+                                NestedMeta::Lit(lit) => {
+                                    panic!("source attribute ({lit:#?}) can't be a literal")
+                                }
+                                NestedMeta::Meta(arg) => {
+                                    match path_to_string(arg.path()).as_str() {
+                                        CLAP_KEY => match arg {
+                                            Meta::Path(_) => {
+                                                res.variables.push(FieldAttribute::Clap(
+                                                    ClapFieldParseResult::default(),
+                                                ))
+                                            }
+                                            Meta::List(clap_metalist) => {
+                                                res.variables.push(FieldAttribute::Clap(
+                                                    parse_clap_field_attribute(&clap_metalist),
+                                                ));
+                                            }
+                                            _ => {
+                                                panic!(
+                                                    "clap attribute must match #[clap(...)] or \
+                                                     #[clap]"
+                                                )
+                                            }
+                                        },
+                                        DEFAULT => {
+                                            if res.default.is_some() {
+                                                panic!(
+                                                    "Default can be assigned only once per field"
+                                                )
+                                            }
+                                            res.default = Some(Default {
+                                                inner: match_literal_or_init_from(
+                                                    &arg,
+                                                    AcceptedLiterals::AnyLiteral,
+                                                )
+                                                .map(|init| match init {
+                                                    InitFrom::Fn(func) => format!("{{{func}}}"),
+                                                    InitFrom::Literal(lit) => match lit {
+                                                        Lit::Str(str) => str.value(),
+                                                        lit => lit.to_token_stream().to_string(),
+                                                    },
+                                                }),
+                                            })
+                                        }
+                                        ENV_KEY => res.variables.push(FieldAttribute::Env(Env {
+                                            inner: match_literal_or_init_from(
+                                                &arg,
+                                                AcceptedLiterals::StringOnly,
+                                            )
+                                            .as_ref()
+                                            .map(InitFrom::as_string),
+                                        })),
+                                        CONFIG_KEY => {
+                                            res.variables.push(FieldAttribute::Config(Config {
+                                                key: match_literal_or_init_from(
+                                                    &arg,
+                                                    AcceptedLiterals::StringOnly,
+                                                )
+                                                .as_ref()
+                                                .map(InitFrom::as_string),
+                                                table: table_name.clone(),
+                                            }))
+                                        }
+                                        DESERIALIZER => {
+                                            if res.deserializer.is_some() {
+                                                panic!(
+                                                    "Deserialize_with can be assigned only once \
+                                                     per field"
+                                                )
+                                            }
+                                            res.deserializer = match_literal_or_init_from(
+                                                &arg,
+                                                AcceptedLiterals::StringOnly,
+                                            )
+                                            .as_ref()
+                                            .map(InitFrom::as_string);
+                                        }
+                                        other => panic!(
+                                            "Unknown source attribute {other} of the field \
+                                             {field_name}"
+                                        ),
+                                    }
+                                }
                             }
-                            NestedMeta::Meta(arg) => match path_to_string(arg.path()).as_str() {
-                                CLAP_KEY => match arg {
-                                    Meta::Path(_) => res.variables.push(FieldAttribute::Clap(
-                                        ClapFieldParseResult::default(),
-                                    )),
-                                    Meta::List(clap_metalist) => {
-                                        res.variables.push(FieldAttribute::Clap(
-                                            parse_clap_field_attribute(&clap_metalist),
-                                        ));
-                                    }
-                                    _ => {
-                                        panic!("clap attribute must match #[clap(...)] or #[clap]")
-                                    }
-                                },
-                                DEFAULT => {
-                                    if res.default.is_some() {
-                                        panic!("Default can be assigned only once per field")
-                                    }
-                                    res.default = Some(Default {
-                                        inner: match_literal_or_init_from(
-                                            &arg,
-                                            AcceptedLiterals::AnyLiteral,
-                                        )
-                                        .map(|init| match init {
-                                            InitFrom::Fn(func) => format!("{{{func}}}"),
-                                            InitFrom::Literal(lit) => match lit {
-                                                Lit::Str(str) => str.value(),
-                                                lit => lit.to_token_stream().to_string(),
-                                            },
-                                        }),
-                                    })
-                                }
-                                ENV_KEY => res.variables.push(FieldAttribute::Env(Env {
-                                    inner: match_literal_or_init_from(
-                                        &arg,
-                                        AcceptedLiterals::StringOnly,
-                                    )
-                                    .as_ref()
-                                    .map(InitFrom::as_string),
-                                })),
-                                CONFIG_KEY => res.variables.push(FieldAttribute::Config(Config {
-                                    key: match_literal_or_init_from(
-                                        &arg,
-                                        AcceptedLiterals::StringOnly,
-                                    )
-                                    .as_ref()
-                                    .map(InitFrom::as_string),
-                                    table: table_name.clone(),
-                                })),
-                                DESERIALIZER => {
-                                    if res.deserializer.is_some() {
-                                        panic!(
-                                            "Deserialize_with can be assigned only once per field"
-                                        )
-                                    }
-                                    res.deserializer = match_literal_or_init_from(
-                                        &arg,
-                                        AcceptedLiterals::StringOnly,
-                                    )
-                                    .as_ref()
-                                    .map(InitFrom::as_string);
-                                }
-                                other => panic!(
-                                    "Unknown source attribute {other} of the field {field_name}"
-                                ),
-                            },
                         }
                     }
-                }
-                _ => panic!("source attribute must match #[source(...)]"),
-            },
-        }
-    }
+                    _ => panic!("source attribute must match #[source(...)]"),
+                },
+            }
 
-    res
+            res
+        })
 }

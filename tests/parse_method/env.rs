@@ -72,7 +72,7 @@ fn env() {
 
 #[test]
 fn env_prefix() {
-    test_env(vec![empty_prefix, no_prefix, some_prefix])
+    test_env(vec![empty_prefix, no_prefix, some_prefix, binary_prefix])
 }
 
 fn empty_prefix() {
@@ -111,7 +111,6 @@ fn some_prefix() {
     });
 }
 
-/// bin file is like config-manager/target/debug/deps/parse_method-b5e125d4f8a36dad
 fn no_prefix() {
     #[derive(Debug, PartialEq)]
     #[config(__debug_cmd_input__())]
@@ -124,5 +123,23 @@ fn no_prefix() {
 
     set_env("fir", 1);
     set_env("second", 2);
-    assert!(matches!(NoPrefix::parse(), Err(Error::MissingArgument(_))));
+    assert_ok_and_compare(&NoPrefix {
+        first: 1,
+        second: 2,
+    });
+}
+
+/// bin file is like config-manager/target/debug/deps/parse_method-b5e125d4f8a36dad
+fn binary_prefix() {
+    #[config(env_prefix, __debug_cmd_input__())]
+    struct BinPrefix {
+        #[allow(dead_code)]
+        #[source(env)]
+        first: String,
+    }
+
+    set_env("first", 1);
+
+    let parsed = BinPrefix::parse();
+    assert!(matches!(parsed, Err(Error::MissingArgument(_))));
 }

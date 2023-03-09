@@ -1,0 +1,1 @@
+> Macro implementation for the [config-manager](https://crates.io/crates/config-manager) crate.

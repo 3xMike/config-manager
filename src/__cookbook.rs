@@ -6,11 +6,11 @@
 //! 2. [Intro](#intro)
 //! 3. [Options](#options)
 //! 4. [Structure level attributes](#structure-attributes)
-//!     1. [global_name](#global-name)
-//!     2. [env_prefix](#env_prefix)
-//!     3. [file](#file)
-//!     4. [clap](#clap)
-//!     5. [table](#table)
+//!     1. [env_prefix](#env_prefix)
+//!     2. [file](#file)
+//!     3. [clap](#clap)
+//!     4. [table](#table)
+//!     5. [default source order](#default_order)
 //! 5. [Field level attributes](#field-attributes)
 //!     1. [source](#source)
 //!         - [default](#default)
@@ -23,8 +23,8 @@
 //!     3. [subcommand](#subcommand)
 //! 6. [`get_command` method](#get_command)
 //! ## Examples
-//! There are [tests](https://github.com/Kryptonite-RU/config-manager-rs/tree/main/tests)
-//! and [examples](https://github.com/Kryptonite-RU/config-manager-rs/tree/main/examples) in
+//! There are [tests](https://github.com/3xMike/config-manager/tree/main/tests)
+//! and [examples](https://github.com/3xMike/config-manager/tree/main/examples) in
 //! the crate repository to get you started
 //!
 //! ## Intro
@@ -105,11 +105,8 @@
 //! More information can be found in the [ConfigOption](../enum.ConfigOption.html) documentation.
 //!
 //! ## Structure attributes
-//! ### `global name`
-//! If assigned, a global variable with the specified name will be created instead of deriving ConfigInit trait.
-//!
 //! ### `env_prefix`
-//! Prefix of the environment variables. The default prefix is the binary file name.
+//! Prefix of the environment variables. If not specified, the prefix will not be added.
 //! Thus, the `iter` field in the example below will be searched in the environment by the `demo_iter` key.
 //! ```
 //! # use config_manager::config;
@@ -124,9 +121,22 @@
 //! ```
 //! **Notes**
 //! - The delimiter ('_') is placed automatically
-//! - If a prefix isn't required, set `env_prefix = ""`
+//! - `env_prefix = ""` will not add any prefix
 //! - `env`, `env_prefix` and similar attributes are case-insensitive. If both the `demo_iter` and
 //! `DEMO_ITER` environment variables are present, which of these two will be parsed *is not defined*
+//! - One can use `env_prefix` (without a value) to set the binary file name as a prefix
+//! **Example**
+//! ```
+//! # use config_manager::config;
+//! #
+//! #[config(env_prefix)]
+//! struct Config {
+//!     #[source(env)]
+//!     capacity: i32,
+//! }
+//! ```
+//! In the example above, the `capacity` field will be searched in the environment
+//! by the "*bin*_capacity" key, where `bin` is the name of the executable file.
 //!
 //! ### `file`
 //! Description of the configuration file. Has the following nested attributes:
@@ -176,15 +186,41 @@
 //! ```
 //! Field `frames` will be searched in the "input.data" table of the configuration file "config.toml".
 //!
+//! ### `default_order`
+//! The default order of any field that wasn't annotated with any of `source`,`flatten` or `subcommand`.\
+//! `clap`, `env`, `config` and `default` are all possible parameters.
+//! Each attribute will be applied to each unannotated field in a "short" form
+//! (i.e., form without value; for example, `#[source(default)]` means that
+//! `Default::default()` will be used as a default value. See the [source](#source) section for more information)
+//! **Example**
+//! ```
+//! # use config_manager::config;
+//! #
+//! #[config(default_order(env, clap, default))]
+//! struct Config {
+//!     rotation: f32,
+//! }
+//! ```
+//! It will be checked that the `ROTATION` environment variable is set; if not, the `--rotation` command line argument will be checked,
+//! and, lastly, the `Default::default()` will be assigned.
+//! **Note:** If this attribute isn't set, the default order is:
+//! 1. command line
+//! 2. environment variables
+//! 3. configuration files
+//!
 //! ## Field attributes
 //! Only fields can be annotated with the following attributes and only one of them can be assigned to a field.
+//!
+//! **Note:** if a field is not annotated with any of the following attributes,
+//! it will be parsed using the default source order (see the section above).
 //!
 //! ### Source
 //! If a field is annotated with the `source` attribute, at least one of the following nested attributes must be present.
 //!
 //! #### `default`
-//! Numeric literal or valid Rust code.
-//! If the field's type implement `std::default::Default`, the attribute can be set without value.
+//! Numeric literal or valid Rust code. \
+//! If the attribute is set without a value (`#[source(default)]`),
+//! the default value is [`Default::default()`](https://doc.rust-lang.org/std/default/trait.Default.html#tymethod.default).
 //!
 //! **Example**
 //! ```
@@ -201,12 +237,14 @@
 //! ```
 //!
 //! #### `env`
-//! Name of the environment variable to set the value from. If present, `env_prefix` (see above)
-//! is ignored. The case is ignored.
+//! The name of the environment variable from which the value is to be set.
+//! `env_prefix` (see above) is ignored if present with a value (`#[source(env = "...")]`).  The case is ignored. \
+//! If the attribute is set without value, the name of the environment variable to be set is `env_prefix + field_name`.
 //!
 //! #### `config`
 //! Name of the configuration file field to set the value from. It can contain dots: in this case
 //! the name will be parsed as the path of the field.\
+//! If the attribute is set without a value (`#[source(config)]`), the field name is the name of the configuration file field to be set. \
 //! **Example**
 //! ```
 //! # use config_manager::config;
@@ -223,8 +261,10 @@
 //! #### `clap`
 //! Clap-crate attributes. Available nested attributes: `help`, `long_help`, `short`, `long`,
 //! `flatten`, `subcommand`.
-//! **Note:** the default `long` and `short` values (`#[clap(long)]` and `#[clap(short)]`) is the field name and it's first letter respectively.
+//! **Note:** the default `long` and `short` values (`#[clap(long)]` and `#[clap(short)]`) is the field name and it's first letter respectively. \
+//! `#[source(clap)]` is equivalent to `#[source(clap(long))]` \
 //!
+//! In addition, the following attribute can be used.
 //! #### `deserialize_with`
 //! Custom deserialization of the field. The deserialization function must have the signature
 //! ```ignore
@@ -283,7 +323,7 @@
 //! #### Flatten attributes
 //! Flatten struct may have the following helper attributes: `table`, `flatten`, `source` (they work the same way as the described above ones).
 //! ### Subcommand
-//! If a field is annotated with the `flatten` attribute, it will be taken as a `clap` subcommand
+//! If a field is annotated with the `subcommand` attribute, it will be taken as a `clap` subcommand
 //! (see [clap documentation](https://docs.rs/clap/latest/clap/_derive/_tutorial/index.html#subcommands) for more info).
 //! The field's type must implement `clap::Subcommand` and `serde::Deserialize`.
 //!

@@ -9,14 +9,6 @@ pub(crate) mod field;
 pub(crate) mod parser;
 pub(crate) mod top_level;
 
-pub(crate) fn field_to_tokens(field: &Field) -> TokenStream {
-    field
-        .ident
-        .clone()
-        .expect("Unnamed fields are forbidden")
-        .to_token_stream()
-}
-
 /// Formated string to TokenStream \
 /// Same as ```TokenStream::from_str(&format!(...)).unwrap()```
 macro_rules! format_to_tokens {

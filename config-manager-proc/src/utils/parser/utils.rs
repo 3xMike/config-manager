@@ -50,10 +50,7 @@ pub(crate) fn path_to_string(path: &Path) -> String {
         .to_string()
 }
 
-pub(crate) fn compare_attribute_name<S: AsRef<str> + PartialEq<String>>(
-    a: &Attribute,
-    name: S,
-) -> bool {
+pub(crate) fn compare_attribute_name(a: &Attribute, name: &str) -> bool {
     name == path_to_string(&a.path)
 }
 

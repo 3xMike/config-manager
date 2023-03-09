@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2022 JSRPC “Kryptonite”
 
-mod utils;
+pub(crate) mod utils;
+
+use std::default::Default;
 
 use super::{attributes::*, format_to_tokens};
 use crate::*;
@@ -29,16 +31,13 @@ pub(crate) struct ProcessFieldResult {
     pub(crate) initialization: TokenStream,
 }
 
-pub(crate) fn field_is_source(field: &Field) -> bool {
-    field
-        .attrs
-        .iter()
-        .any(|attr| compare_attribute_name(attr, SOURCE_KEY))
-}
-
-pub(crate) fn process_field(field: Field, table_name: &Option<String>) -> ProcessFieldResult {
+pub(crate) fn process_field(
+    field: Field,
+    table_name: &Option<String>,
+    default_order: &Option<ExtractedAttributes>,
+) -> ProcessFieldResult {
     let field_name = field.ident.clone().expect("Unnamed fields are forbidden");
-    if number_of_crate_attribute(&field) != 1 {
+    if number_of_crate_attribute(&field) > 1 {
         panic!(
             "Error: source attribute must be the only attribute of the field (field's name: \
              \"{}\")",
@@ -46,7 +45,16 @@ pub(crate) fn process_field(field: Field, table_name: &Option<String>) -> Proces
         );
     }
 
-    let attributes_order = extract_attributes(field, table_name.clone());
+    let attributes_order = extract_attributes(field, table_name)
+        .or_else(|| default_order.clone())
+        .unwrap_or_else(|| ExtractedAttributes {
+            variables: vec![
+                FieldAttribute::Clap(Default::default()),
+                FieldAttribute::Env(Default::default()),
+                FieldAttribute::Config(Default::default()),
+            ],
+            ..Default::default()
+        });
 
     ProcessFieldResult {
         initialization: attributes_order.gen_init(&field_name.to_string()),

@@ -7,7 +7,7 @@ authors = [
     "Nikolay Pakharev <n.pakharev@kryptonite.ru>",
 ]
 description = "Macro implementation for config-manager-rs derives"
-repository = "https://github.com/Kryptonite-RU/config-manager-rs/tree/main/config-manager-proc"
+repository = "https://github.com/3xMike/config-manager/tree/main/config-manager-proc"
 license = "MIT"
 keywords = ["macro", "derive", "proc_macro", "config", "configuration"]
 categories = [
