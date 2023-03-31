@@ -22,11 +22,7 @@ use utils::{config::*, field::*, parser::*, top_level::*};
 pub fn config(attrs: TokenStream0, input: TokenStream0) -> TokenStream0 {
     let parser = Punctuated::<Meta, Token![,]>::parse_terminated;
     let attrs = parser.parse(attrs).unwrap();
-    let mut annotations = String::from(
-        "#[derive(::config_manager::__private::__Config__, \
-         ::config_manager::__private::serde::Deserialize)]\n#[serde(crate = \
-         \"::config_manager::__private::serde\")]",
-    );
+    let mut annotations = String::from("#[derive(::config_manager::__private::__Config__)]");
     attrs.iter().for_each(|attr| {
         std::write!(&mut annotations, "\n{}", (quote! { #[#attr]})).unwrap();
     });

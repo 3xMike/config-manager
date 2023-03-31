@@ -5,13 +5,13 @@ mod parse_method {
     mod env;
     mod file;
     mod flatten;
+    mod get_command;
     mod init_from;
     mod integration_test;
     mod layers;
+    mod parse_options;
     mod subcommand;
     mod tables;
-    mod parse_options;
-    mod get_command;
 }
 
 fn test_env(tests: Vec<fn()>) {
