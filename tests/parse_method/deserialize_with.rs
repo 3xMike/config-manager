@@ -1,14 +1,12 @@
-use serde::{Deserialize, Deserializer};
-
 use crate::{assert_ok_and_compare, set_env, test_env};
 use config_manager::config;
 
 fn deserialize_with() {
-    fn deserialize_i32_and_add_1<'de, D>(de: D) -> Result<i32, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        i32::deserialize(de).map(|x| x + 1_i32)
+    fn deserialize_i32_and_add_1(x: &str) -> Result<i32, String> {
+        match x.parse::<i32>() {
+            Ok(x) => Ok(x + 1),
+            Err(err) => Err(err.to_string()),
+        }
     }
 
     const I32_KEY: &str = "i32";
