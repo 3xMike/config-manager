@@ -139,7 +139,8 @@ struct AppConfig {
 - `env`, `env_prefix` and similar attributes are case-insensitive. If both the `demo_iter` and
   `DEMO_ITER` environment variables are present, which of these two will be parsed *is not defined*
 - One can use `env_prefix` (without a value) to set the binary file name as a prefix
-  **Example**
+
+**Example**
 
 ```rust
 #[config(env_prefix)]
@@ -164,8 +165,9 @@ Description of the configuration file. Has the following nested attributes:
 - `optional`:  boolean attribute: should the macro panic (`false`) or not (`true`)\
   **Note:** It is allowed to specify multiple files: all of them will be merged.
   If there is a collision (the values of a particular key have been specified in two or more files),
-  the value will be assigned from the file that has been described later (in the attribute list).\
-  **Example**
+  the value will be assigned from the file that has been described later (in the attribute list).
+
+**Example**
 
 ```rust
 #[config(
@@ -211,7 +213,8 @@ The default order of any field that wasn't annotated with any of `source`,`flatt
 `clap`, `env`, `config` and `default` are all possible parameters.
 Each attribute will be applied to each unannotated field in a "short" form
 (i.e., form without value; for example, `#[source(default)]` means that
-`Default::default()` will be used as a default value. See the [source](#source) section for more information)
+`Default::default()` will be used as a default value. See the [source](#source) section for more information).
+
 **Example**
 
 ```rust
@@ -271,7 +274,8 @@ If the attribute is set without value, the name of the environment variable to b
 Name of the configuration file field to set the value from. It can contain dots: in this case
 the name will be parsed as a path to the field.\
 If the attribute is set without a value (`#[source(config)]`), the field name is the name of the configuration file
-field to be set. \
+field to be set.
+
 **Example**
 
 ```rust
@@ -328,7 +332,7 @@ If a field is annotated with the `flatten` attribute, it will be parsed as a nes
 initiated
 like fields of the primal config. In this case, the field's type must implement `config_manager::Flatten`
 (it is highly discouraged to implement this trait manually, use derive macro: `#[derive(Flatten)]`)
-and `serde::Deserialize`
+and `serde::Deserialize`.
 
 **Example**
 
