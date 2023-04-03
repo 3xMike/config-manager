@@ -62,10 +62,7 @@ impl ExtractedAttributes {
             None => quote!(::config_manager::__private::deser_hjson::from_str(&value)),
             Some(deser_fn) => {
                 let deser_fn = deser_fn.trim_matches('\"');
-                format_to_tokens!(
-                    "{deser_fn}(&mut \
-                     ::config_manager::__private::serde_json::Deserializer::from_str(&value))"
-                )
+                format_to_tokens!("({deser_fn})(&value)")
             }
         }
     }
@@ -124,7 +121,7 @@ impl ExtractedAttributes {
         let missing_err = self.gen_err(field_name);
 
         quote! {
-            (|| -> ::std::result::Result<_, ::config_manager::Error>{
+            (|| -> ::std::result::Result<_, ::config_manager::Error> {
                 let init_without_default = #rest;
                 match (init_without_default, #default_initialization) {
                     (::std::option::Option::<::std::string::String>::None, ::std::option::Option::None) => {

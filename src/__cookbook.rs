@@ -148,7 +148,7 @@
 //! - `optional`:  boolean attribute: should the macro panic (`false`) or not (`true`)\
 //! **Note:** It is allowed to specify multiple files: all of them will be merged.
 //! If there is a collision (the values of a particular key have been specified in two or more files),
-//! the value will be assigned from the file that has been described later (in the attribute list).\
+//! the value will be assigned from the file that has been described later (in the attribute list).
 //! **Example**
 //! ```
 //! # use config_manager::config;
@@ -191,7 +191,7 @@
 //! `clap`, `env`, `config` and `default` are all possible parameters.
 //! Each attribute will be applied to each unannotated field in a "short" form
 //! (i.e., form without value; for example, `#[source(default)]` means that
-//! `Default::default()` will be used as a default value. See the [source](#source) section for more information)
+//! `Default::default()` will be used as a default value. See the [source](#source) section for more information).
 //! **Example**
 //! ```
 //! # use config_manager::config;
@@ -244,7 +244,7 @@
 //! #### `config`
 //! Name of the configuration file field to set the value from. It can contain dots: in this case
 //! the name will be parsed as the path of the field.\
-//! If the attribute is set without a value (`#[source(config)]`), the field name is the name of the configuration file field to be set. \
+//! If the attribute is set without a value (`#[source(config)]`), the field name is the name of the configuration file field to be set.
 //! **Example**
 //! ```
 //! # use config_manager::config;
@@ -268,14 +268,12 @@
 //! #### `deserialize_with`
 //! Custom deserialization of the field. The deserialization function must have the signature
 //! ```ignore
-//! fn fn_name<'de, D>(de: D) -> Result<FieldType, D::Error>
-//!     where D: serde::Deserializer<'de>
+//! fn fn_name(s: &str) -> Result<FieldType, String>
 //! ```
 //!
 //! **Example**
 //! ```
 //! # use config_manager::config;
-//! # use serde::{Deserializer, Deserialize};
 //! use std::time::Duration;
 //!
 //! #[config]
@@ -284,11 +282,11 @@
 //!     a: Duration,
 //! }
 //!
-//! fn deser_duration<'de, D>(de: D) -> Result<Duration, D::Error>
-//! where
-//!     D: Deserializer<'de>,
-//! {
-//!     u64::deserialize(de).map(Duration::from_millis)
+//! fn deser_duration(dur: &str) -> Result<Duration, String> {
+//!     match dur.parse::<u64>() {
+//!         Ok(dur) => Ok(Duration::from_millis(dur)),
+//!         Err(err) => Err(err.to_string()),
+//!     }
 //! }
 //! ```
 //!

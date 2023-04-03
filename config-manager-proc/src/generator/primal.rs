@@ -55,14 +55,12 @@ pub(super) fn gen_clap_app(
     }
 }
 
-pub(super) fn gen_clap_matches(
-    debug_cmd_input: Option<TokenStream>,
-) -> TokenStream {
+pub(super) fn gen_clap_matches(debug_cmd_input: Option<TokenStream>) -> TokenStream {
     let parsing_method = match debug_cmd_input {
         None => quote! {.try_get_matches()},
         Some(args) => quote! {.try_get_matches_from(::std::vec!["", #args])},
     };
-    
+
     quote! {
         {
             (|| -> ::std::result::Result<::config_manager::__private::clap::ArgMatches, ::config_manager::Error> {
@@ -132,7 +130,7 @@ pub(super) fn gen_config_file_data(config_keys: Vec<ConfigFileInfo>) -> TokenStr
                 let mut err_msg = ::std::vec![];
 
                 if let ::std::option::Option::<&::std::primitive::str>::Some(clap_long) = #clap_long {
-                    if let Some(field_match) = #matches.get_one::<::std::string::String>(clap_long) { 
+                    if let Some(field_match) = #matches.get_one::<::std::string::String>(clap_long) {
                         res.push((#file_format, field_match.to_string()));
                         return ::std::result::Result::Ok(());
                     }
@@ -212,11 +210,9 @@ fn gen_sources() -> TokenStream {
         })
     };
 
-    
     quote! {
         let (mut env_data, mut clap_data, mut config_file_data, mut env_prefix) =
             ::std::default::Default::default();
-        
             for option in options {
                 match option {
                     ::config_manager::ConfigOption::EnvPrefix(pref) => {
@@ -267,7 +263,6 @@ fn gen_sources() -> TokenStream {
                     }
                 }
             }
-        
     }
 }
 
@@ -325,5 +320,5 @@ pub(super) fn struct_initialization(
     quote! {
         #sources
         #init_body
-    }   
+    }
 }
