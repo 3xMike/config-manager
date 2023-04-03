@@ -268,14 +268,12 @@
 //! #### `deserialize_with`
 //! Custom deserialization of the field. The deserialization function must have the signature
 //! ```ignore
-//! fn fn_name<'de, D>(de: D) -> Result<FieldType, D::Error>
-//!     where D: serde::Deserializer<'de>
+//! fn fn_name(s: &str) -> Result<FieldType, String>
 //! ```
 //!
 //! **Example**
 //! ```
 //! # use config_manager::config;
-//! # use serde::{Deserializer, Deserialize};
 //! use std::time::Duration;
 //!
 //! #[config]
@@ -284,11 +282,11 @@
 //!     a: Duration,
 //! }
 //!
-//! fn deser_duration<'de, D>(de: D) -> Result<Duration, D::Error>
-//! where
-//!     D: Deserializer<'de>,
-//! {
-//!     u64::deserialize(de).map(Duration::from_millis)
+//! fn deser_duration(dur: &str) -> Result<Duration, String> {
+//!     match dur.parse::<u64>() {
+//!         Ok(dur) => Ok(Duration::from_millis(dur)),
+//!         Err(err) => Err(err.to_string()),
+//!     }
 //! }
 //! ```
 //!
