@@ -124,7 +124,7 @@ Thus, the `iter` field in the example below will be searched in the environment 
 
 ```rust
 #[config(
-env_prefix = "demo"
+    env_prefix = "demo"
 )]
 struct AppConfig {
     #[source(env)]
@@ -171,8 +171,8 @@ Description of the configuration file. Has the following nested attributes:
 
 ```rust
 #[config(
-env_prefix = "",
-file(format = "toml", env = "demo_config")
+    env_prefix = "",
+    file(format = "toml", env = "demo_config")
 )]
 struct AppConfig {
     #[source(clap(long), env, default = 5)]
