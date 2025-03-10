@@ -2,16 +2,16 @@
 members = ["config-manager-proc", "examples"]
 
 [package]
-name = "config-manager"
+name = "tonysd-config-manager"
 version = "0.2.0"
 edition = "2021"
 authors = [
     "Mikhail Mikhailov <m.mikhailov@kryptonite.ru>",
-    "Nikolay Pakharev <n.pakharev@kryptonite.ru>",
+    "Nikolay Pakharev <n.pakharev@kryptonite.ru>"
 ]
 description = "Crate to build config from environment, command line and files"
 readme = "README.md"
-repository = "https://github.com/3xMike/config-manager"
+repository = "https://github.com/TonySD/config-manager"
 license = "MIT"
 keywords = ["macro", "configuration", "environment", "command-line", "config"]
 categories = ["config", "development-tools", "command-line-utilities"]
@@ -19,7 +19,7 @@ categories = ["config", "development-tools", "command-line-utilities"]
 [dependencies]
 clap = { version = "4.0.29", features = ["derive", "cargo"] }
 config = "0.13.0"
-config-manager-proc = { path = "./config-manager-proc", version = "0.2.0" }
+config-manager-proc = { path = "./config-manager-proc", version = "0.2.0", package = "tonysd-config-manager-proc" }
 ctor = "0.1.23"
 deser-hjson = "1.0.2"
 serde = { version = "1.0", features = ["derive"] }

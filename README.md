@@ -1,4 +1,7 @@
 > **Crate to build config from environment, command line and files**
+# Attention
+It's a fork of original [config-manager](https://github.com/3xMike/config-manager) crate, which is not updating anymore. I wanted to use some of new clap's features, so this repository exists.
+
 # Motivation
 Non-runtime data generally comes to a project from
 command line, environment and configuration files.\

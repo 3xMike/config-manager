@@ -1,5 +1,5 @@
 [package]
-name = "config-manager-proc"
+name = "tonysd-config-manager-proc"
 version = "0.2.0"
 edition = "2021"
 authors = [

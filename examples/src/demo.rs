@@ -19,6 +19,7 @@ struct MethodConfig {
     #[source(clap(long, short, help_heading = "A heading"))]
     a: i32,
     #[source(
+        clap(long, short, help_heading = "A heading"),
         env(init_from = "&format!(\"b{}\", SUFFIX)"),
         default = "\"abc\".to_string()"
     )]
