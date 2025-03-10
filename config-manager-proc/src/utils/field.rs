@@ -23,6 +23,7 @@ pub(crate) struct NormalClapFieldInfo {
     pub(crate) short: Option<String>,
     pub(crate) help: Option<String>,
     pub(crate) long_help: Option<String>,
+    pub(crate) help_heading: Option<String>,
 }
 
 pub(crate) struct ProcessFieldResult {

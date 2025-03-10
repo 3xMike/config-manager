@@ -19,7 +19,7 @@ pub(crate) const SUBCOMMAND: &str = "subcommand";
 
 pub(super) const ALLOWED_CLAP_APP_ATTRS: &[&str] =
     &["name", "version", "author", "about", "long_about"];
-pub(super) const ALLOWED_CLAP_FIELD_ATTRS: &[&str] = &["help", "long_help", "short", "long"];
+pub(super) const ALLOWED_CLAP_FIELD_ATTRS: &[&str] = &["help", "long_help", "short", "long", "help_heading"];
 
 #[derive(EnumIter, strum_macros::Display)]
 pub(super) enum TopLevelAttr {
