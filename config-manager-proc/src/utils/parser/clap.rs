@@ -20,6 +20,7 @@ pub(crate) struct ClapFieldParseResult {
     pub(crate) short: MaybeString,
     pub(crate) help: Option<String>,
     pub(crate) long_help: Option<String>,
+    pub(crate) help_heading: Option<String>,
     pub(crate) flag: bool,
 }
 
@@ -51,6 +52,7 @@ impl ClapFieldParseResult {
             },
             help: self.help,
             long_help: self.long_help,
+            help_heading: self.help_heading,
             flag: self.flag,
         }
     }
@@ -170,6 +172,12 @@ pub(crate) fn parse_clap_field_attribute(
             "long_help" => {
                 res.long_help = match atr {
                     Meta::Path(_) => panic!("long_help attribute can't be path"),
+                    other => meta_to_option(other),
+                }
+            }
+            "help_heading" => {
+                res.help_heading = match atr {
+                    Meta::Path(_) => panic!("help_heading attribute can't be path"),
                     other => meta_to_option(other),
                 }
             }

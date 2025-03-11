@@ -291,7 +291,7 @@ configuration file by the `frame_rate` key.
 
 #### `clap`
 
-Clap-crate attributes. Available nested attributes: `help`, `long_help`, `short`, `long`, `flag`,
+Clap-crate attributes. Available nested attributes: `help`, `long_help`, `help_heading`, `short`, `long`, `flag`,
 `flatten`, `subcommand`.
 **Note:** the default `long` and `short` values (`#[clap(long)]` and `#[clap(short)]`) is the field name and it's first
 letter. \

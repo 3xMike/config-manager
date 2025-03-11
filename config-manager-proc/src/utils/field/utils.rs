@@ -42,6 +42,10 @@ impl ToTokens for NormalClapFieldInfo {
                 None => TokenStream::new(),
                 Some(long_help) => format_to_tokens!(".long_help({long_help})"),
             };
+            let help_heading = match &self.help_heading {
+                None => TokenStream::new(),
+                Some(help_heading) => format_to_tokens!(".help_heading({help_heading})"),
+            };
             quote! {
                 clap::Arg::new(#name)
                 #long
@@ -49,6 +53,7 @@ impl ToTokens for NormalClapFieldInfo {
                 #flag
                 #help
                 #long_help
+                #help_heading
                 .required(false)
             }
         })

@@ -7,7 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased] - ReleaseDate
 ## [0.2.1](https://github.com/3xMike/config-manager/releases/tag/0.2.1) - 2025-03-11
 ### Added
-- Clap field `flag` argument.
+- Clap field `flag` attribute.
+- Clap field `help_heading` attribute.
 
 ## [0.2.0](https://github.com/3xMike/config-manager/releases/tag/0.2.0) - 2023-04-03
 ### Changed
