@@ -90,7 +90,7 @@ fn optional() {
     #[config(file(format = "json", env = "config_1",))]
     struct NotFound {}
 
-    assert!(matches!(NotFound::parse(), Err(_)));
+    assert!(NotFound::parse().is_err());
 
     #[config(
         file(format = "json", env = "config_1", optional = true),

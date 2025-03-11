@@ -89,15 +89,15 @@
 //! - If the value is not found in any of the sources, an error will be returned
 //! - Field type must implement `serde::de::Deserialize`
 //! - All attributes except `default` must match either `attribute = literal`, or
-//! `attribute(init_from = "...valid Rust code...")`, or `attribute`. In the last case, the "key"
-//! value (the CLI argument name, the environment variable name, or the config file key name —
-//! depending on the source) will match the field name. For example, annotating `my_field` with
-//! `#[clap]` means that the value could be assigned to `my_field` by specifying
-//! `--my_field=...` via the CLI
+//!     `attribute(init_from = "...valid Rust code...")`, or `attribute`. In the last case, the "key"
+//!     value (the CLI argument name, the environment variable name, or the config file key name —
+//!     depending on the source) will match the field name. For example, annotating `my_field` with
+//!     `#[clap]` means that the value could be assigned to `my_field` by specifying
+//!     `--my_field=...` via the CLI
 //! - Attribute `default` must match `default = "...valid Rust code..."` or `default`
 //! - `expression` from `default = "expression"` will be interpreted as a Rust expression (for example, `expression` could be a function call)
 //! - If the `deserialize_with` attribute is not set, values from command line,
-//! environment will be deserialized according to [hjson syntax](https://hjson.github.io/)
+//!     environment will be deserialized according to [hjson syntax](https://hjson.github.io/)
 //!
 //! ## Options
 //! Parsing process may be run with a set of options by using the [ConfigInit::parse_options(options)](../trait.ConfigInit.html#tymethod.parse_options).
@@ -123,8 +123,9 @@
 //! - The delimiter ('_') is placed automatically
 //! - `env_prefix = ""` will not add any prefix
 //! - `env`, `env_prefix` and similar attributes are case-insensitive. If both the `demo_iter` and
-//! `DEMO_ITER` environment variables are present, which of these two will be parsed *is not defined*
+//!     `DEMO_ITER` environment variables are present, which of these two will be parsed *is not defined*
 //! - One can use `env_prefix` (without a value) to set the binary file name as a prefix
+//!
 //! **Example**
 //! ```
 //! # use config_manager::config;
@@ -142,13 +143,16 @@
 //! Description of the configuration file. Has the following nested attributes:
 //! - `format`: `toml`/`json`/`yaml`/`ron`/`json5`
 //! - `env`: environment key containing path to the configuration file (case-insensitive)
-//! - `clap`: clap attributes of the argument, responsible for the path to the configuration file\
+//! - `clap`: clap attributes of the argument, responsible for the path to the configuration file
+//!
 //! **Note:** in this case, clap attribute must have the nested `long` attribute (`clap(long = "...")`)
 //! - `default`: default configuration file path
-//! - `optional`:  boolean attribute: should the macro panic (`false`) or not (`true`)\
+//! - `optional`:  boolean attribute: should the macro panic (`false`) or not (`true`)
+//!
 //! **Note:** It is allowed to specify multiple files: all of them will be merged.
-//! If there is a collision (the values of a particular key have been specified in two or more files),
-//! the value will be assigned from the file that has been described later (in the attribute list).
+//!     If there is a collision (the values of a particular key have been specified in two or more files),
+//!     the value will be assigned from the file that has been described later (in the attribute list).
+//!
 //! **Example**
 //! ```
 //! # use config_manager::config;
@@ -356,11 +360,11 @@
 //! ```
 //! **Notes:**
 //! - Value for the `subcommand` enumeration will be searched only in command line, so the `source` and the `flatten` attributes are forbidden
-//! (flatten `subcommand` attribute is allowed due to clap documentation).
+//!     (flatten `subcommand` attribute is allowed due to clap documentation).
 //! - Multiple `subcommand` fields are forbidden.
 //! - `subcommand` field in nested(`flatten`) structures are forbidden.
 //! - `subcommand` field can be optional (`Option<T>`, `T: clap::Subcommand + serde::Deserialize`),
-//! so if no subcommand is found in the command line, the `None` will be assigned.
+//!     so if no subcommand is found in the command line, the `None` will be assigned.
 //!
 //! ## get_command
 //! [ConfigInit](../trait.ConfigInit.html) trait has the [get_command](../trait.ConfigInit.html#tymethod.get_command)

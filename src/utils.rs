@@ -97,7 +97,7 @@ fn find_sub_table(
 }
 
 fn deconstruct_table_path(table: &str) -> impl Iterator<Item = String> + '_ {
-    table.split(|dot| dot == '.').map(ToString::to_string)
+    table.split('.').map(ToString::to_string)
 }
 
 fn from_config_to_string(initial: config::Value) -> Result<String, super::Error> {

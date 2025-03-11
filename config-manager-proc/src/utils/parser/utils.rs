@@ -60,15 +60,11 @@ pub(crate) fn is_type_an_optional(ty: &Type) -> Option<Type> {
         Type::Path(path) if path.qself.is_none() => path.path,
         _ => return None,
     };
-    let idents_of_path = path
-        .segments
-        .iter()
-        .into_iter()
-        .fold(String::new(), |mut acc, v| {
-            acc.push_str(&v.ident.to_string());
-            acc.push('|');
-            acc
-        });
+    let idents_of_path = path.segments.iter().fold(String::new(), |mut acc, v| {
+        acc.push_str(&v.ident.to_string());
+        acc.push('|');
+        acc
+    });
 
     let option_segment = vec![
         "std|option|Option|",

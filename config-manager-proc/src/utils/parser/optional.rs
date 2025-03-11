@@ -102,7 +102,7 @@ pub(crate) fn match_literal_or_init_from(
             if args.len() != 1 {
                 panic!("len of nested args must be exactly 1");
             }
-            return match &args[0] {
+            match &args[0] {
                 NestedMeta::Meta(attribute) => {
                     let atr_path = attribute.path();
                     let init_from = parse_quote! { init_from };
@@ -126,7 +126,7 @@ pub(crate) fn match_literal_or_init_from(
                     }
                 }
                 arg => panic!("unexpected attribute: {:#?}", arg),
-            };
+            }
         }
     }
 }
