@@ -3,7 +3,7 @@
 ### Example
 To run example from project page Readme, type:
 ```bash
-cargo run --package examples --bin demo -- --config="config.toml" --a=5
+cargo run --package examples --bin demo -- --config="examples/config.toml" --a=5 --flag
 ```
 
 Next example shows sjson-syntax to use if you want to pass params with comand line or env:

@@ -20,6 +20,7 @@ pub(crate) struct ClapFieldParseResult {
     pub(crate) short: MaybeString,
     pub(crate) help: Option<String>,
     pub(crate) long_help: Option<String>,
+    pub(crate) flag: bool,
 }
 
 impl ClapFieldParseResult {
@@ -50,6 +51,7 @@ impl ClapFieldParseResult {
             },
             help: self.help,
             long_help: self.long_help,
+            flag: self.flag,
         }
     }
 }
@@ -143,7 +145,10 @@ pub(crate) fn parse_clap_app_attribute(attributes: &MetaList) -> ClapAppParseRes
     res
 }
 
-pub(crate) fn parse_clap_field_attribute(attributes: &MetaList) -> ClapFieldParseResult {
+pub(crate) fn parse_clap_field_attribute(
+    attributes: &MetaList,
+    is_bool: bool,
+) -> ClapFieldParseResult {
     let attrs = &attributes.nested;
     let mut res = ClapFieldParseResult::default();
 
@@ -167,6 +172,15 @@ pub(crate) fn parse_clap_field_attribute(attributes: &MetaList) -> ClapFieldPars
                     Meta::Path(_) => panic!("long_help attribute can't be path"),
                     other => meta_to_option(other),
                 }
+            }
+            "flag" => {
+                if !is_bool {
+                    panic!("Only boolean arguments can be flags")
+                }
+                if !matches!(atr, Meta::Path(_)) {
+                    panic!("flag attribute can't take any value(s)")
+                }
+                res.flag = true
             }
             other => panic!(
                 "clap attibute \"{other}\" is not supported, allowed attrs: {:?}",

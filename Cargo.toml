@@ -3,7 +3,7 @@ members = ["config-manager-proc", "examples"]
 
 [package]
 name = "config-manager"
-version = "0.2.0"
+version = "0.2.1"
 edition = "2021"
 authors = [
     "Mikhail Mikhailov <m.mikhailov@kryptonite.ru>",

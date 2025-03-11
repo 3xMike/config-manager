@@ -27,6 +27,8 @@ struct MethodConfig {
     c: i32,
     #[source(default = "HashMap::new()")]
     d: HashMap<i32, String>,
+    #[source(clap(flag), default = false)]
+    f: bool,
 }
 
 fn main() {
