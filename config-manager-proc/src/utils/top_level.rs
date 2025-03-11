@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2022 JSRPC “Kryptonite”
 
-use super::{attributes::*, format_to_tokens};
+use super::{attributes::*, format_to_tokens, meta_value_lit};
 use crate::utils::field::utils::{ExtractedAttributes, FieldAttribute};
 use crate::*;
 
@@ -71,37 +71,28 @@ impl ToTokens for NormalClapAppInfo {
 pub(crate) fn extract_clap_app(attrs: &[Attribute]) -> NormalClapAppInfo {
     attrs
         .iter()
-        .find(|a| compare_attribute_name(a, CLAP_KEY))
-        .map(|atr| match atr.parse_meta() {
-            Err(err) => panic!("Can't parse attribute as meta: {err}"),
-            Ok(meta) => match meta {
-                Meta::List(clap_meta_list) => parse_clap_app_attribute(&clap_meta_list),
-                _ => panic!("{CLAP_KEY} attribute must match #[{CLAP_KEY}(...)"),
-            },
+        .find(|a| a.path().is_ident(CLAP_KEY))
+        .map(|attr| {
+            let list = attr
+                .meta
+                .require_list()
+                .expect("clap attribute must match #[clap(...)");
+            parse_clap_app_attribute(list)
         })
         .unwrap_or_default()
         .normalize()
 }
 
 pub(crate) fn extract_env_prefix(attrs: &[Attribute]) -> Option<String> {
-    match attrs
-        .iter()
-        .find(|a| compare_attribute_name(a, ENV_PREFIX_KEY))
-    {
+    match attrs.iter().find(|a| a.path().is_ident(ENV_PREFIX_KEY)) {
         None => Some(String::new()),
-        Some(attr) => match attr.parse_meta() {
-            Err(err) => panic!("Can't parse attribute as meta: {err}"),
-            Ok(meta) => match meta {
-                Meta::Path(_) => None,
-                Meta::NameValue(MetaNameValue {
-                    lit: Lit::Str(input_name),
-                    ..
-                }) => Some(input_name.value()),
-                _ => panic!(
-                    "{ENV_PREFIX_KEY} must match #[{ENV_PREFIX_KEY} = \"...\"] or \
+        Some(attr) => match &attr.meta {
+            Meta::Path(_) => None,
+            Meta::NameValue(meta_value_lit!(input_name)) => Some(input_name.value()),
+            _ => panic!(
+                "{ENV_PREFIX_KEY} must match #[{ENV_PREFIX_KEY} = \"...\"] or \
                      #[{ENV_PREFIX_KEY}]"
-                ),
-            },
+            ),
         },
     }
 }
@@ -109,73 +100,60 @@ pub(crate) fn extract_env_prefix(attrs: &[Attribute]) -> Option<String> {
 pub(crate) fn extract_debug_cmd_input(attrs: &[Attribute]) -> Option<TokenStream> {
     attrs
         .iter()
-        .find(|a| compare_attribute_name(a, DEBUG_INPUT_KEY))
-        .map(|atr| match atr.parse_meta() {
-            Err(err) => panic!("Can't parse attribute as meta: {err}"),
-            Ok(meta) => match meta {
-                Meta::List(clap_meta_list) => clap_meta_list.nested.to_token_stream(),
-                _ => panic!("{DEBUG_INPUT_KEY} attribute must match #[{DEBUG_INPUT_KEY}(...)"),
-            },
+        .find(|a| a.path().is_ident(DEBUG_INPUT_KEY))
+        .map(|attr| {
+            attr.meta
+                .require_list()
+                .unwrap_or_else(|_| {
+                    panic!("{DEBUG_INPUT_KEY} attribute must match #[{DEBUG_INPUT_KEY}(...)")
+                })
+                .tokens
+                .clone()
         })
 }
 
 pub(crate) fn extract_table_name(attrs: &[Attribute]) -> Option<String> {
     attrs
         .iter()
-        .find(|a| compare_attribute_name(a, TABLE_NAME_KEY))
-        .map(|atr| match atr.parse_meta() {
-            Err(err) => panic!("Can't parse attribute as meta: {err}"),
-            Ok(meta) => match meta {
-                Meta::NameValue(MetaNameValue {
-                    lit: Lit::Str(input_name),
-                    ..
-                }) => input_name.value(),
-                _ => panic!("{TABLE_NAME_KEY} must match #[{TABLE_NAME_KEY} = \"...\"]"),
-            },
+        .find(|a| a.path().is_ident(TABLE_NAME_KEY))
+        .map(|attr| match &attr.meta {
+            Meta::NameValue(meta_value_lit!(lit_str)) => lit_str.value(),
+            _ => panic!("{TABLE_NAME_KEY} must match #[{TABLE_NAME_KEY} = \"...\"]"),
         })
 }
 
 pub(crate) fn extract_source_order(attrs: &[Attribute]) -> Option<ExtractedAttributes> {
-    attrs
-        .iter()
-        .find(|a| compare_attribute_name(a, SOURCE_ORDER_KEY))
-        .map(|atr| match atr.parse_meta() {
-            Err(err) => panic!("Can't parse attribute as meta: {err}"),
-            Ok(meta) => match meta {
-                Meta::List(list) => {
-                    let mut res = ExtractedAttributes::default();
-                    for meta in list.nested {
-                        match meta {
-                            NestedMeta::Meta(Meta::Path(p)) => match path_to_string(&p).as_str() {
-                                CLAP_KEY => {
-                                    res.variables.push(FieldAttribute::Clap(Default::default()))
-                                }
-                                ENV_KEY => {
-                                    res.variables.push(FieldAttribute::Env(Default::default()))
-                                }
-                                CONFIG_KEY => res
-                                    .variables
-                                    .push(FieldAttribute::Config(Default::default())),
-                                DEFAULT => {
-                                    res.default =
-                                        Some(crate::utils::field::utils::Default::default())
-                                }
-                                other => panic!(
-                                    "Error in \"{other}\" attribute: only {CLAP_KEY}, {ENV_KEY}, \
+    let attr = attrs.iter().find(|a| a.path().is_ident(SOURCE_ORDER_KEY))?;
+
+    let list = attr
+        .meta
+        .require_list()
+        .unwrap_or_else(|_| panic!("{SOURCE_ORDER_KEY} must match #[{SOURCE_ORDER_KEY}(...)]"));
+    let nested = list
+        .parse_args_with(Punctuated::<Meta, Token![,]>::parse_terminated)
+        .unwrap();
+
+    let mut res = ExtractedAttributes::default();
+    for meta in nested {
+        let p = meta.require_path_only().unwrap_or_else(|_| {
+            panic!(
+                "default_order nested attributes can be on of: {CLAP_KEY}, \
+                                 {ENV_KEY}, {CONFIG_KEY} and {DEFAULT}"
+            )
+        });
+        match path_to_string(p).as_str() {
+            CLAP_KEY => res.variables.push(FieldAttribute::Clap(Default::default())),
+            ENV_KEY => res.variables.push(FieldAttribute::Env(Default::default())),
+            CONFIG_KEY => res
+                .variables
+                .push(FieldAttribute::Config(Default::default())),
+            DEFAULT => res.default = Some(crate::utils::field::utils::Default::default()),
+            other => panic!(
+                "Error in \"{other}\" attribute: only {CLAP_KEY}, {ENV_KEY}, \
                                      {CONFIG_KEY} and {DEFAULT} are allowed as default_order \
                                      nested attribute"
-                                ),
-                            },
-                            other => panic!(
-                                "default_order nested attributes can be on of: {CLAP_KEY}, \
-                                 {ENV_KEY}, {CONFIG_KEY} and {DEFAULT}, error in meta: {}",
-                                other.to_token_stream()
-                            ),
-                        }
-                    }
-                    res
-                }
-                _ => panic!("{SOURCE_ORDER_KEY} must match #[{SOURCE_ORDER_KEY}(...)]"),
-            },
-        })
+            ),
+        };
+    }
+    Some(res)
 }

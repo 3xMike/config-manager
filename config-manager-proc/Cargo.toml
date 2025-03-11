@@ -22,9 +22,9 @@ proc-macro = true
 
 [dependencies]
 convert_case = "0.5"
-proc-macro2 = "1.0"
-quote = "1.0"
+proc-macro2 = "1.0.91"
+quote = "1.0.35"
 strum = "0.24.0"
 strum_macros = "0.24.0"
-syn = { version = "1.0", features = ["full", "extra-traits"] }
+syn = { version = "2.0.100", features = ["full", "extra-traits"] }
 unzip-n = "0.1.2"

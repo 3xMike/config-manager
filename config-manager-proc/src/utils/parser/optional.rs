@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2022 JSRPC “Kryptonite”
 
-use crate::*;
+use crate::{utils::meta_value_lit, *};
 
 pub(crate) enum InitFrom {
     Fn(String),
@@ -74,7 +74,10 @@ pub(crate) fn match_literal_or_init_from(
 ) -> Option<InitFrom> {
     match attribute {
         Meta::Path(_) => None,
-        Meta::NameValue(MetaNameValue { lit, .. }) => Some(match accepted_literals {
+        Meta::NameValue(MetaNameValue {
+            value: Expr::Lit(ExprLit { lit, .. }),
+            ..
+        }) => Some(match accepted_literals {
             AcceptedLiterals::AnyLiteral => InitFrom::Literal(lit.clone()),
             AcceptedLiterals::StringOnly => {
                 if matches!(lit, Lit::Str(_)) {
@@ -98,35 +101,33 @@ pub(crate) fn match_literal_or_init_from(
                 }
             }
         }),
-        Meta::List(MetaList { nested: args, .. }) => {
+        Meta::List(list) => {
+            let args = list
+                .parse_args_with(Punctuated::<Meta, Token![,]>::parse_terminated)
+                .unwrap();
+
             if args.len() != 1 {
                 panic!("len of nested args must be exactly 1");
             }
-            match &args[0] {
-                NestedMeta::Meta(attribute) => {
-                    let atr_path = attribute.path();
-                    let init_from = parse_quote! { init_from };
-                    if *atr_path != init_from {
-                        panic!(
-                            "expected {:#?}, got {:#?}",
-                            init_from.to_token_stream().to_string(),
-                            atr_path.to_token_stream().to_string()
-                        )
-                    } else {
-                        match attribute {
-                            Meta::NameValue(MetaNameValue { lit, .. }) => {
-                                if let Lit::Str(lit) = lit {
-                                    Some(InitFrom::Fn(lit.value()))
-                                } else {
-                                    panic!("init_from attribute must be a string literal")
-                                }
-                            }
-                            any => panic!("unexpected attribute type, must be literal: {:#?}", any),
-                        }
-                    }
+
+            let attr_path = args[0].path();
+            let init_from = parse_quote! { init_from };
+            if *attr_path != init_from {
+                panic!(
+                    "expected {:#?}, got {:#?}",
+                    init_from.to_token_stream().to_string(),
+                    attr_path.to_token_stream().to_string()
+                )
+            } else {
+                match &args[0] {
+                    Meta::NameValue(meta_value_lit!(lit)) => Some(InitFrom::Fn(lit.value())),
+                    any => panic!(
+                        "unexpected attribute type, must be string literal: {:#?}",
+                        any
+                    ),
                 }
-                arg => panic!("unexpected attribute: {:#?}", arg),
             }
         }
+        other => panic!("Unknown attribute meta {}", other.to_token_stream()),
     }
 }
