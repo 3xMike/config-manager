@@ -291,11 +291,17 @@ configuration file by the `frame_rate` key.
 
 #### `clap`
 
-Clap-crate attributes. Available nested attributes: `help`, `long_help`, `short`, `long`,
+Clap-crate attributes. Available nested attributes: `help`, `long_help`, `help_heading`, `short`, `long`, `flag`,
 `flatten`, `subcommand`.
 **Note:** the default `long` and `short` values (`#[clap(long)]` and `#[clap(short)]`) is the field name and it's first
 letter. \
 `#[source(clap)]` is equivalent to `#[source(clap(long))]` \
+**Note:** boolean fields can be marked as `#[source(clap(flag))]` that allow to set it as `true` with no value provided. \
+**Example:** the following field can be set to `true` using the CLI: `./my_app -f` or `./my_asp --flag true`.
+```
+#[source(clap(long, short, flag))]
+flap: bool
+```
 
 In addition, the following attribute can be used.
 

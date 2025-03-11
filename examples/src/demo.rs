@@ -16,7 +16,7 @@ const SUFFIX: &str = "_env";
     )
 )]
 struct MethodConfig {
-    #[source(clap(long, short))]
+    #[source(clap(long, short, help_heading = "A heading"))]
     a: i32,
     #[source(
         env(init_from = "&format!(\"b{}\", SUFFIX)"),
@@ -27,6 +27,8 @@ struct MethodConfig {
     c: i32,
     #[source(default = "HashMap::new()")]
     d: HashMap<i32, String>,
+    #[source(clap(flag), default = false)]
+    f: bool,
 }
 
 fn main() {

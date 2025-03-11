@@ -79,7 +79,26 @@ fn complex_field() {
     })
 }
 
+fn flags() {
+    #[derive(Debug, PartialEq)]
+    #[config(__debug_cmd_input__("--flag_setted", "-e=false"))]
+    struct Flags {
+        #[source(clap(flag))]
+        flag_setted: bool,
+        #[source(clap(flag), default = false)]
+        flag_unsetted: bool,
+        #[source(clap(short, flag), default = true)]
+        explicit_flag: bool,
+    }
+
+    assert_ok_and_compare(&Flags {
+        flag_setted: true,
+        flag_unsetted: false,
+        explicit_flag: false,
+    })
+}
+
 #[test]
 fn clap() {
-    test_env(vec![simple_field, complex_field]);
+    test_env(vec![simple_field, complex_field, flags]);
 }

@@ -28,7 +28,7 @@ pub fn config(attrs: TokenStream0, input: TokenStream0) -> TokenStream0 {
     });
     let mut annotations =
         TokenStream0::from_str(&annotations).expect("can't parse annotations as tokenstream");
-    annotations.extend(input.into_iter());
+    annotations.extend(input);
     annotations
 }
 

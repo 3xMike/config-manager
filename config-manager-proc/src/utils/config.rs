@@ -61,7 +61,8 @@ fn handle_file_attribute(
                                 if path_to_string(meta.path()) == CLAP_KEY {
                                     match meta {
                                         Meta::List(list) => {
-                                            clap_info = Some(parse_clap_field_attribute(list));
+                                            clap_info =
+                                                Some(parse_clap_field_attribute(list, false));
                                             continue 'next_arg;
                                         }
                                         _ => panic!("clap attribute must match \"clap(...)\""),
