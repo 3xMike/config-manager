@@ -270,6 +270,7 @@ pub(super) fn extract_attributes(
     table_name: &Option<String>,
 ) -> Option<ExtractedAttributes> {
     let is_bool = field.ty.to_token_stream().to_string() == "bool";
+    let is_string = is_string(&field.ty);
     let field_name = field.ident.expect("Unnamed fields are forbidden");
 
     let mut res = ExtractedAttributes::default();
@@ -304,25 +305,21 @@ pub(super) fn extract_attributes(
                 if res.default.is_some() {
                     panic!("Default can be assigned only once per field")
                 }
+                let mut default_init = extract_default(&arg);
+                if is_string {
+                    default_init = default_init.map(|s| format!("::std::convert::Into::into({s})"));
+                }
                 res.default = Some(Default {
-                    inner: match_literal_or_init_from(&arg, AcceptedLiterals::AnyLiteral).map(
-                        |init| match init {
-                            InitFrom::Fn(func) => format!("{{{func}}}"),
-                            InitFrom::Literal(lit) => match lit {
-                                Lit::Str(str) => str.value(),
-                                lit => lit.to_token_stream().to_string(),
-                            },
-                        },
-                    ),
+                    inner: default_init,
                 })
             }
             ENV_KEY => res.variables.push(FieldAttribute::Env(Env {
-                inner: match_literal_or_init_from(&arg, AcceptedLiterals::StringOnly)
+                inner: match_literal_or_init_from(&arg, AcceptedLiterals::String)
                     .as_ref()
                     .map(InitFrom::as_string),
             })),
             CONFIG_KEY => res.variables.push(FieldAttribute::Config(Config {
-                key: match_literal_or_init_from(&arg, AcceptedLiterals::StringOnly)
+                key: match_literal_or_init_from(&arg, AcceptedLiterals::String)
                     .as_ref()
                     .map(InitFrom::as_string),
                 table: table_name.clone(),
@@ -334,7 +331,7 @@ pub(super) fn extract_attributes(
                                                      per field"
                     )
                 }
-                res.deserializer = match_literal_or_init_from(&arg, AcceptedLiterals::StringOnly)
+                res.deserializer = match_literal_or_init_from(&arg, AcceptedLiterals::String)
                     .as_ref()
                     .map(InitFrom::as_string);
             }
@@ -346,4 +343,25 @@ pub(super) fn extract_attributes(
     }
 
     Some(res)
+}
+
+fn is_string(ty: &Type) -> bool {
+    let path = match ty {
+        Type::Path(path) if path.qself.is_none() => &path.path,
+        _ => return false,
+    };
+    let idents_of_path = path.segments.iter().fold(String::new(), |mut acc, v| {
+        acc.push_str(&v.ident.to_string());
+        acc.push('|');
+        acc
+    });
+
+    vec![
+        "std|string|String|",
+        "core|string|String|",
+        "string|String|",
+        "String|",
+    ]
+    .into_iter()
+    .any(|s| idents_of_path == *s)
 }

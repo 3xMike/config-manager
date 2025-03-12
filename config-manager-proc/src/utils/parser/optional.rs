@@ -19,10 +19,9 @@ impl InitFrom {
 
 #[derive(Copy, Clone)]
 pub(crate) enum AcceptedLiterals {
-    AnyLiteral,
-    StringOnly,
-    CharOnly,
-    BoolOnly,
+    String,
+    Char,
+    Bool,
 }
 
 pub(crate) struct OptionalAttribute<T: ToString> {
@@ -78,22 +77,21 @@ pub(crate) fn match_literal_or_init_from(
             value: Expr::Lit(ExprLit { lit, .. }),
             ..
         }) => Some(match accepted_literals {
-            AcceptedLiterals::AnyLiteral => InitFrom::Literal(lit.clone()),
-            AcceptedLiterals::StringOnly => {
+            AcceptedLiterals::String => {
                 if matches!(lit, Lit::Str(_)) {
                     InitFrom::Literal(lit.clone())
                 } else {
                     panic!("expected string, got {:#?}", lit);
                 }
             }
-            AcceptedLiterals::BoolOnly => {
+            AcceptedLiterals::Bool => {
                 if matches!(lit, Lit::Bool(_)) {
                     InitFrom::Literal(lit.clone())
                 } else {
                     panic!("expected bool, got {:#?}", lit);
                 }
             }
-            AcceptedLiterals::CharOnly => {
+            AcceptedLiterals::Char => {
                 if matches!(lit, Lit::Char(_)) {
                     InitFrom::Literal(lit.clone())
                 } else {
@@ -129,5 +127,15 @@ pub(crate) fn match_literal_or_init_from(
             }
         }
         other => panic!("Unknown attribute meta {}", other.to_token_stream()),
+    }
+}
+
+pub(crate) fn extract_default(meta: &Meta) -> Option<String> {
+    match meta {
+        Meta::Path(_) => None,
+        Meta::List(_) => {
+            panic!("default attribute must be #[source(default = \"...\")] of #[source(default)]")
+        }
+        Meta::NameValue(MetaNameValue { value, .. }) => Some(value.to_token_stream().to_string()),
     }
 }

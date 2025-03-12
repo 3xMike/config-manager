@@ -101,14 +101,14 @@ impl ClapAppParseResult {
 }
 
 fn meta_to_maybe(meta: &Meta) -> MaybeString {
-    match_literal_or_init_from(meta, AcceptedLiterals::StringOnly)
+    match_literal_or_init_from(meta, AcceptedLiterals::String)
         .map(|value| ClapOption::Some(value.as_string()))
         .unwrap_or(ClapOption::Empty)
 }
 
 fn meta_to_option(meta: &Meta) -> Option<String> {
     Some(
-        match_literal_or_init_from(meta, AcceptedLiterals::StringOnly)
+        match_literal_or_init_from(meta, AcceptedLiterals::String)
             .as_ref()
             .map(InitFrom::as_string)
             .unwrap_or_else(|| panic!("{} attribute can't be empty", path_to_string(meta.path()))),
@@ -163,7 +163,7 @@ pub(crate) fn parse_clap_field_attribute(
         match path_to_string(attr.path()).as_str() {
             "long" => res.long = meta_to_maybe(attr),
             "short" => {
-                res.short = match_literal_or_init_from(attr, AcceptedLiterals::CharOnly)
+                res.short = match_literal_or_init_from(attr, AcceptedLiterals::Char)
                     .map(|value| ClapOption::Some(value.as_string()))
                     .unwrap_or(ClapOption::Empty)
             }

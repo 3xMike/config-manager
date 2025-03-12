@@ -56,8 +56,8 @@ fn handle_file_attribute(attr: &Attribute) -> ParsedConfigFileAttributes {
         .map(|ty| OptionalAttribute {
             value: None,
             accepted_literals: match ty {
-                ConfigFileAttr::Optional => AcceptedLiterals::BoolOnly,
-                _ => AcceptedLiterals::StringOnly,
+                ConfigFileAttr::Optional => AcceptedLiterals::Bool,
+                _ => AcceptedLiterals::String,
             },
             ty,
         })
