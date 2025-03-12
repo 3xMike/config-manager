@@ -3,7 +3,7 @@
 
 use crate::*;
 
-mod attributes;
+pub(crate) mod attributes;
 pub(crate) mod config;
 pub(crate) mod field;
 pub(crate) mod parser;
@@ -19,9 +19,9 @@ macro_rules! format_to_tokens {
 
 macro_rules! meta_value_lit {
     ($($arg:tt)*) => {
-        MetaNameValue {
-            value: Expr::Lit(ExprLit {
-                lit: Lit::Str($($arg)*),
+        syn::MetaNameValue {
+            value: syn::Expr::Lit(syn::ExprLit {
+                lit: syn::Lit::Str($($arg)*),
                 ..
             }),
             ..

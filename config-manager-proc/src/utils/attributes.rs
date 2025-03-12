@@ -2,6 +2,9 @@
 // Copyright (c) 2022 JSRPC “Kryptonite”
 
 use strum_macros::EnumIter;
+use syn::{Attribute, Meta};
+
+use super::meta_value_lit;
 
 pub(crate) const CLAP_KEY: &str = "clap";
 pub(crate) const ENV_KEY: &str = "env";
@@ -66,4 +69,21 @@ pub(super) enum ConfigFileAttr {
     Optional,
     #[strum(serialize = "default")]
     Default,
+}
+
+pub(crate) fn extract_docs(attrs: &[Attribute]) -> Option<String> {
+    let mut res = String::new();
+    for attr in attrs {
+        if !attr.meta.path().is_ident("doc") {
+            continue;
+        }
+        if let Meta::NameValue(meta_value_lit!(str_lit)) = &attr.meta {
+            res.push_str(&str_lit.value());
+        }
+    }
+    if res.is_empty() {
+        None
+    } else {
+        Some(res)
+    }
 }

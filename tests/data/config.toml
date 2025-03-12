@@ -6,6 +6,7 @@ debug_mode = true
 toml = 2
 config = 3
 int_env = 100
+empty = ""
 
 [input]
 int = 5

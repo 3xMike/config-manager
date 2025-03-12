@@ -50,9 +50,10 @@ use config_manager::{config, ConfigInit};
 
 const SUFFIX: &str = "_env";
 
+/// This doc will be included to CLI long_about.
 #[derive(Debug)]
 #[config(
-    clap(version, author),
+    clap(version, author, long_about),
     env_prefix = "demo",
     file(
         format = "toml",
@@ -62,16 +63,17 @@ const SUFFIX: &str = "_env";
     )
 )]
 struct MethodConfig {
-    #[source(clap(long, short))]
+    /// This doc will be included to CLI help.
+    #[source(clap(long, short, help))]
     a: i32,
     #[source(
-        env(init_from = "&format!(\"b{}\", SUFFIX)"),
-        default = "\"abc\".to_string()"
+        env(init_from = &format!("b{}", SUFFIX)),
+        default = "abc"
     )]
     b: String,
     #[source(config = "bpm")]
     c: i32,
-    #[source(default = "HashMap::new()")]
+    #[source(default = HashMap::new())]
     d: HashMap<i32, String>,
 }
 

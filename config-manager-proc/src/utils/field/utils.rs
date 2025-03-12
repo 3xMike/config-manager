@@ -70,7 +70,14 @@ pub(crate) struct ExtractedAttributes {
 impl ExtractedAttributes {
     fn deserializer(&self) -> TokenStream {
         match &self.deserializer {
-            None => quote!(::config_manager::__private::deser_hjson::from_str(&value)),
+            None => quote! {
+                let value = if value.is_empty() {
+                    "\"\"".to_string()
+                } else {
+                    value
+                };
+                ::config_manager::__private::deser_hjson::from_str(&value)
+            },
             Some(deser_fn) => {
                 let deser_fn = deser_fn.trim_matches('\"');
                 format_to_tokens!("({deser_fn})(&value)")
@@ -271,6 +278,7 @@ pub(super) fn extract_attributes(
 ) -> Option<ExtractedAttributes> {
     let is_bool = field.ty.to_token_stream().to_string() == "bool";
     let is_string = is_string(&field.ty);
+    let docs = extract_docs(&field.attrs);
     let field_name = field.ident.expect("Unnamed fields are forbidden");
 
     let mut res = ExtractedAttributes::default();
@@ -288,11 +296,9 @@ pub(super) fn extract_attributes(
                     .variables
                     .push(FieldAttribute::Clap(ClapFieldParseResult::default())),
                 Meta::List(clap_metalist) => {
-                    res.variables
-                        .push(FieldAttribute::Clap(parse_clap_field_attribute(
-                            &clap_metalist,
-                            is_bool,
-                        )));
+                    let mut clap_attributes = parse_clap_field_attribute(&clap_metalist, is_bool);
+                    clap_attributes.docs = docs.clone();
+                    res.variables.push(FieldAttribute::Clap(clap_attributes));
                 }
                 _ => {
                     panic!(

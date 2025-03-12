@@ -172,7 +172,14 @@
 //! - default value (`5`)
 //!
 //! ### `clap`
-//! Clap app attributes: `name`, `version`, `author`, `about`, `long_about`
+//! Clap app attributes: `name`, `version`, `author`, `about`, `long_about`.
+//!
+//! If on of the attributes is used without value (for example: `clap(name)`):
+//! - `name`: will be taken as package from Cargo.toml,
+//! - `version`: will be taken as crate version from Cargo.toml,
+//! - `author`: will be taken as crate authors from Cargo.toml,
+//! - `about`: will be taken as crate discription from Cargo.toml,
+//! - `long_about`: will be taken from doc comments of the struct (aka `///` or `/** */`).
 //!
 //! ### `table`
 //! Table of the configuration files to find fields of the structure.
@@ -274,8 +281,16 @@
 //! #### `clap`
 //! Clap-crate attributes. Available nested attributes: `help`, `long_help`, `help_heading`, `short`, `long`, `flag`
 //! `flatten`, `subcommand`.
-//! **Note:** the default `long` and `short` values (`#[clap(long)]` and `#[clap(short)]`) is the field name and it's first letter respectively. \
-//! `#[source(clap)]` is equivalent to `#[source(clap(long))]` \
+//!
+//! If on of the attributes is used without value (for example: `clap(short)`):
+//! - `help`: will be taken from doc comments of the field (aka `///` or `/** */`),
+//! - `long_help`: will be taken from doc comments of the field (aka `///` or `/** */`),
+//! - `help_heading`: forbidden,
+//! - `short`: the first letter of the field name,
+//! - `long`: the field name,
+//! - `flag`: only the short form allowed.
+//!
+//! **Note:** `#[source(clap)]` is equivalent to `#[source(clap(long))]` \
 //! **Note:** boolean fields can be marked as `#[source(clap(flag))]` that allow to set it as `true` with no value provided. \
 //! **Example:** the following field can be set to `true` using the CLI: `./my_app -f` or `./my_asp --flag true`.
 //! ```
@@ -288,12 +303,15 @@
 //! }
 //! ```
 //!
-//! In addition, the following attribute can be used.
 //! #### `deserialize_with`
-//! Custom deserialization of the field. The deserialization function must have the signature
+//! Custom deserialization of the field. The deserialization function should have the following signature:
 //! ```ignore
-//! fn fn_name(s: &str) -> Result<FieldType, String>
+//! fn fn_name<S: AsRef<str>>(s: S) -> Result<FieldType, impl std::fmt::Display>
 //! ```
+//! **Note:** actually, `&String` will be passed to the function,
+//! so function can take any argument that is derivable from `&String`.
+//! It may be `&str`, `&String`, `T: AsRef<str>`, `T: AsRef<String>`, and so on.
+//! It is recommended to choose error type explicitly.
 //!
 //! **Example**
 //! ```
