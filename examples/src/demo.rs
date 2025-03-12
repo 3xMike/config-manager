@@ -6,9 +6,10 @@ use config_manager::{config, ConfigInit};
 
 const SUFFIX: &str = "_env";
 
+/// Long about for my App.
 #[derive(Debug)]
 #[config(
-    clap(version, author),
+    clap(version, author, long_about),
     env_prefix = "demo",
     file(
         format = "toml",
@@ -18,7 +19,8 @@ const SUFFIX: &str = "_env";
     )
 )]
 struct MethodConfig {
-    #[source(clap(long, short, help_heading = "A heading"))]
+    /// This docs will be help and long_help.
+    #[source(clap(long, short, help, long_help, help_heading = "A heading"))]
     a: i32,
     #[source(env(init_from = &format!("b{SUFFIX}")), default = "abc")]
     b: String,

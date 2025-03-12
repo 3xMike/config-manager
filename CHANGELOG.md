@@ -6,6 +6,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased] - ReleaseDate
 ## [0.3.1](https://github.com/3xMike/config-manager/releases/tag/0.3.1) - 2025-03-12
+### Added
+- Allow to use clap(help), clap(long_help) and clap(long_about) without value.
+Doc comments will be used instead.
 ### Fixed
 - Bug "Can't deserialize ... EoF" on setting empty string via env/cli/config.
 ### Updated:

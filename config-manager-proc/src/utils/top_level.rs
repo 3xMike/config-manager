@@ -69,6 +69,8 @@ impl ToTokens for NormalClapAppInfo {
 }
 
 pub(crate) fn extract_clap_app(attrs: &[Attribute]) -> NormalClapAppInfo {
+    let docs = extract_docs(attrs);
+
     attrs
         .iter()
         .find(|a| a.path().is_ident(CLAP_KEY))
@@ -80,7 +82,7 @@ pub(crate) fn extract_clap_app(attrs: &[Attribute]) -> NormalClapAppInfo {
             parse_clap_app_attribute(list)
         })
         .unwrap_or_default()
-        .normalize()
+        .normalize(docs)
 }
 
 pub(crate) fn extract_env_prefix(attrs: &[Attribute]) -> Option<String> {

@@ -278,6 +278,7 @@ pub(super) fn extract_attributes(
 ) -> Option<ExtractedAttributes> {
     let is_bool = field.ty.to_token_stream().to_string() == "bool";
     let is_string = is_string(&field.ty);
+    let docs = extract_docs(&field.attrs);
     let field_name = field.ident.expect("Unnamed fields are forbidden");
 
     let mut res = ExtractedAttributes::default();
@@ -295,11 +296,9 @@ pub(super) fn extract_attributes(
                     .variables
                     .push(FieldAttribute::Clap(ClapFieldParseResult::default())),
                 Meta::List(clap_metalist) => {
-                    res.variables
-                        .push(FieldAttribute::Clap(parse_clap_field_attribute(
-                            &clap_metalist,
-                            is_bool,
-                        )));
+                    let mut clap_attributes = parse_clap_field_attribute(&clap_metalist, is_bool);
+                    clap_attributes.docs = docs.clone();
+                    res.variables.push(FieldAttribute::Clap(clap_attributes));
                 }
                 _ => {
                     panic!(

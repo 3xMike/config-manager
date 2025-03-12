@@ -187,7 +187,14 @@ In this case, the initialization order for the `iter` field is:
 
 ### `clap`
 
-Clap app attributes: `name`, `version`, `author`, `about`, `long_about`
+Clap app attributes: `name`, `version`, `author`, `about`, `long_about`.
+
+If on of the attributes is used without value (for example: `clap(name)`):
+- `name`: will be taken as package from Cargo.toml,
+- `version`: will be taken as crate version from Cargo.toml,
+- `author`: will be taken as crate authors from Cargo.toml,
+- `about`: will be taken as crate discription from Cargo.toml,
+- `long_about`: will be taken from doc comments of the struct (aka `///` or `/** */`).
 
 ### `table`
 
@@ -299,17 +306,22 @@ configuration file by the `frame_rate` key.
 
 Clap-crate attributes. Available nested attributes: `help`, `long_help`, `help_heading`, `short`, `long`, `flag`,
 `flatten`, `subcommand`.
-**Note:** the default `long` and `short` values (`#[clap(long)]` and `#[clap(short)]`) is the field name and it's first
-letter. \
-`#[source(clap)]` is equivalent to `#[source(clap(long))]` \
+
+If on of the attributes is used without value (for example: `clap(short)`):
+- `help`: will be taken from doc comments of the field (aka `///` or `/** */`),
+- `long_help`: will be taken from doc comments of the field (aka `///` or `/** */`),
+- `help_heading`: forbidden,
+- `short`: the first letter of the field name,
+- `long`: the field name,
+- `flag`: only the short form allowed.
+
+**Note:** `#[source(clap)]` is equivalent to `#[source(clap(long))]` \
 **Note:** boolean fields can be marked as `#[source(clap(flag))]` that allow to set it as `true` with no value provided. \
 **Example:** the following field can be set to `true` using the CLI: `./my_app -f` or `./my_asp --flag true`.
-```
+```rust
 #[source(clap(long, short, flag))]
-flap: bool
+flag: bool
 ```
-
-In addition, the following attribute can be used.
 
 #### `deserialize_with`
 
