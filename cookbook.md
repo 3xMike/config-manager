@@ -313,11 +313,14 @@ In addition, the following attribute can be used.
 
 #### `deserialize_with`
 
-Custom deserialization of the field. The deserialization function must have the signature
+Custom deserialization of the field. The deserialization function should have the following signature:
 
 ```rust
-fn fn_name(s: &str) -> Result<FieldType, String>
+fn fn_name<S: AsRef<str>>(s: S) -> Result<FieldType, impl std::fmt::Display>
 ```
+**Note:** actually, `&String` will be passed to the function, so function can take any argument that is derivable from `&String`.
+It may be `&str`, `&String`, `T: AsRef<str>`, `T: AsRef<String>`, and so on.
+It is recommended to choose error type explicitly.
 
 **Example**
 
