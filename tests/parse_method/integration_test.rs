@@ -38,7 +38,7 @@ struct MethodConfig {
     c: i32,
     #[source(default = HashMap::new())]
     d: HashMap<i32, String>,
-    #[source(clap(long = "struct"), default = Foo{data: Bar::Second})]
+    #[source(clap(long = "struct"), default = Foo{ data: Bar::Second })]
     e: Foo,
 }
 

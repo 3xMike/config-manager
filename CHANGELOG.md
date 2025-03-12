@@ -5,7 +5,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased] - ReleaseDate
-## [0.3.0]
+## [0.3.0](https://github.com/3xMike/config-manager/releases/tag/0.3.0) - 2025-03-12
 ### Changed
 - default and init_from now takes code without quotation marks. I.e. following old code is invalid:
 ```rust
@@ -24,7 +24,7 @@ struct Config {
 }
 ```
 - Using the default for String fields will invoke Into::into() before init.
-Therefore it's possible to use `&str` for String default initialization now:
+Therefore it's possible to use `&str` for String default initialization:
 ```rust
 #[config]
 struct Config {
