@@ -5,6 +5,34 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased] - ReleaseDate
+## [0.3.0]
+### Changed
+- default and init_from now takes code without quotation marks. I.e. following old code is invalid:
+```rust
+#[config]
+struct Config {
+    #[default = "HashMap::new()"]
+    map: HashMap<usize, String>
+}
+```
+Valid code now is:
+```rust
+#[config]
+struct Config {
+    #[default = HashMap::new()]
+    map: HashMap<usize, String>
+}
+```
+- Using the default for String fields will invoke Into::into() before init.
+Therefore it's possible to use `&str` for String default initialization now:
+```rust
+#[config]
+struct Config {
+    #[default = "default string value"]
+    s: String
+}
+```
+
 ## [0.2.1](https://github.com/3xMike/config-manager/releases/tag/0.2.1) - 2025-03-11
 ### Added
 - Clap field `flag` attribute.
