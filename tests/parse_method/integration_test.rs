@@ -29,16 +29,16 @@ struct MethodConfig {
     #[source(clap, env, config)]
     a: i32,
     #[source(
-        env(init_from = "stringify!(env_b)"),
-        default = "\"abc\".to_string()",
-        config(init_from = "CONFIG_NAME")
+        env(init_from = stringify!(env_b)),
+        default = "abc",
+        config(init_from = CONFIG_NAME)
     )]
     b: String,
     #[source(config = "bpm", clap(short = 'b'))]
     c: i32,
-    #[source(default = "HashMap::new()")]
+    #[source(default = HashMap::new())]
     d: HashMap<i32, String>,
-    #[source(clap(long = "struct"), default = "Foo{data: Bar::Second}")]
+    #[source(clap(long = "struct"), default = Foo{ data: Bar::Second })]
     e: Foo,
 }
 

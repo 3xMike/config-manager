@@ -17,7 +17,20 @@ macro_rules! format_to_tokens {
     };
 }
 
+macro_rules! meta_value_lit {
+    ($($arg:tt)*) => {
+        MetaNameValue {
+            value: Expr::Lit(ExprLit {
+                lit: Lit::Str($($arg)*),
+                ..
+            }),
+            ..
+        }
+    };
+}
+
 pub(crate) use format_to_tokens;
+pub(crate) use meta_value_lit;
 
 pub(crate) fn option_to_tokens(opt: &Option<String>) -> TokenStream {
     match opt {

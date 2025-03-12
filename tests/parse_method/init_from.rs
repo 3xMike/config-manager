@@ -9,9 +9,9 @@ fn env_and_config_init_from() {
     #[derive(Debug, PartialEq)]
     #[config(file(format = "json", env = "config"), __debug_cmd_input__())]
     struct Init {
-        #[source(env(init_from = "ENV_KEY"))]
+        #[source(env(init_from = ENV_KEY))]
         env: i32,
-        #[source(config(init_from = "CONFIG_KEY"))]
+        #[source(config(init_from = CONFIG_KEY))]
         config: i32,
     }
 
@@ -32,16 +32,16 @@ fn clap_init_from() {
     #[config(
         file(format = "json", clap(long = "config")),
         clap(
-            about(init_from = "ABOUT"),
-            version(init_from = "VERSION"),
-            author(init_from = "AUTHOR")
+            about(init_from = ABOUT),
+            version(init_from = VERSION),
+            author(init_from = AUTHOR)
         ),
         __debug_cmd_input__("--config=./tests/data/config.json", "--i32=24", "--string=foobar")
     )]
     struct Init {
-        #[source(clap(long(init_from = "I32_KEY")))]
+        #[source(clap(long(init_from = I32_KEY)))]
         i32: i32,
-        #[source(clap(long(init_from = "STRING_KEY")))]
+        #[source(clap(long(init_from = STRING_KEY)))]
         string: String,
     }
 

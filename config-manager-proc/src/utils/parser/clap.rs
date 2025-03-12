@@ -101,14 +101,14 @@ impl ClapAppParseResult {
 }
 
 fn meta_to_maybe(meta: &Meta) -> MaybeString {
-    match_literal_or_init_from(meta, AcceptedLiterals::StringOnly)
+    match_literal_or_init_from(meta, AcceptedLiterals::String)
         .map(|value| ClapOption::Some(value.as_string()))
         .unwrap_or(ClapOption::Empty)
 }
 
 fn meta_to_option(meta: &Meta) -> Option<String> {
     Some(
-        match_literal_or_init_from(meta, AcceptedLiterals::StringOnly)
+        match_literal_or_init_from(meta, AcceptedLiterals::String)
             .as_ref()
             .map(InitFrom::as_string)
             .unwrap_or_else(|| panic!("{} attribute can't be empty", path_to_string(meta.path()))),
@@ -116,23 +116,25 @@ fn meta_to_option(meta: &Meta) -> Option<String> {
 }
 
 pub(crate) fn parse_clap_app_attribute(attributes: &MetaList) -> ClapAppParseResult {
-    let attrs = &attributes.nested;
     let mut res = ClapAppParseResult::default();
 
-    attrs.iter().for_each(|atr| match atr {
-        NestedMeta::Lit(_) => panic!("clap attribute can't be a literal"),
-        NestedMeta::Meta(atr) => match path_to_string(atr.path()).as_str() {
+    let attrs = &attributes
+        .parse_args_with(Punctuated::<Meta, Token![,]>::parse_terminated)
+        .unwrap();
+
+    for attr in attrs {
+        match path_to_string(attr.path()).as_str() {
             "name" => {
-                res.name = match atr {
+                res.name = match attr {
                     Meta::Path(_) => panic!("long_about attribute can't be path"),
                     other => meta_to_option(other),
                 }
             }
-            "version" => res.version = meta_to_maybe(atr),
-            "author" => res.author = meta_to_maybe(atr),
-            "about" => res.about = meta_to_maybe(atr),
+            "version" => res.version = meta_to_maybe(attr),
+            "author" => res.author = meta_to_maybe(attr),
+            "about" => res.about = meta_to_maybe(attr),
             "long_about" => {
-                res.long_about = match atr {
+                res.long_about = match attr {
                     Meta::Path(_) => panic!("long_about attribute can't be path"),
                     other => meta_to_option(other),
                 }
@@ -141,8 +143,8 @@ pub(crate) fn parse_clap_app_attribute(attributes: &MetaList) -> ClapAppParseRes
                 "clap attibute \"{other}\" is not supported, allowed attrs: {:?}",
                 ALLOWED_CLAP_APP_ATTRS
             ),
-        },
-    });
+        };
+    }
 
     res
 }
@@ -151,32 +153,34 @@ pub(crate) fn parse_clap_field_attribute(
     attributes: &MetaList,
     is_bool: bool,
 ) -> ClapFieldParseResult {
-    let attrs = &attributes.nested;
     let mut res = ClapFieldParseResult::default();
 
-    attrs.iter().for_each(|atr| match atr {
-        NestedMeta::Lit(_) => panic!("clap attribute can't be a literal"),
-        NestedMeta::Meta(atr) => match path_to_string(atr.path()).as_str() {
-            "long" => res.long = meta_to_maybe(atr),
+    let attrs = &attributes
+        .parse_args_with(Punctuated::<Meta, Token![,]>::parse_terminated)
+        .unwrap();
+
+    for attr in attrs {
+        match path_to_string(attr.path()).as_str() {
+            "long" => res.long = meta_to_maybe(attr),
             "short" => {
-                res.short = match_literal_or_init_from(atr, AcceptedLiterals::CharOnly)
+                res.short = match_literal_or_init_from(attr, AcceptedLiterals::Char)
                     .map(|value| ClapOption::Some(value.as_string()))
                     .unwrap_or(ClapOption::Empty)
             }
             "help" => {
-                res.help = match atr {
+                res.help = match attr {
                     Meta::Path(_) => panic!("help attribute can't be path"),
                     other => meta_to_option(other),
                 }
             }
             "long_help" => {
-                res.long_help = match atr {
+                res.long_help = match attr {
                     Meta::Path(_) => panic!("long_help attribute can't be path"),
                     other => meta_to_option(other),
                 }
             }
             "help_heading" => {
-                res.help_heading = match atr {
+                res.help_heading = match attr {
                     Meta::Path(_) => panic!("help_heading attribute can't be path"),
                     other => meta_to_option(other),
                 }
@@ -185,7 +189,7 @@ pub(crate) fn parse_clap_field_attribute(
                 if !is_bool {
                     panic!("Only boolean arguments can be flags")
                 }
-                if !matches!(atr, Meta::Path(_)) {
+                if !matches!(attr, Meta::Path(_)) {
                     panic!("flag attribute can't take any value(s)")
                 }
                 res.flag = true
@@ -194,8 +198,8 @@ pub(crate) fn parse_clap_field_attribute(
                 "clap attibute \"{other}\" is not supported, allowed attrs: {:?}",
                 ALLOWED_CLAP_FIELD_ATTRS
             ),
-        },
-    });
+        };
+    }
 
     res
 }

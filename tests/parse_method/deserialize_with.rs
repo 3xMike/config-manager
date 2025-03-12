@@ -20,11 +20,11 @@ fn deserialize_with() {
     struct Init {
         #[source(
             deserialize_with = "deserialize_i32_and_add_1",
-            clap(long(init_from = "I32_KEY")),
-            env(init_from = "I32_KEY")
+            clap(long(init_from = I32_KEY)),
+            env(init_from = I32_KEY)
         )]
         i32: i32,
-        #[source(clap(long(init_from = "STRING_KEY")), env(init_from = "STRING_KEY"))]
+        #[source(clap(long(init_from = STRING_KEY)), env(init_from = STRING_KEY))]
         string: String,
     }
 

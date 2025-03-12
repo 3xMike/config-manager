@@ -33,124 +33,114 @@ struct ParsedConfigFileAttributes {
     default: Option<String>,
 }
 
-fn handle_file_attribute(
+fn handle_file_attributes(
     class_attributes: &[Attribute],
 ) -> impl Iterator<Item = ParsedConfigFileAttributes> + '_ {
     class_attributes
         .iter()
-        .filter(|a| compare_attribute_name(a, CONFIG_FILE_KEY))
-        .map(|atr| match atr.parse_meta() {
-            Err(err) => panic!("Can't parse attribute as meta: {err}"),
-            Ok(meta) => match meta {
-                Meta::List(MetaList { nested: args, .. }) => {
-                    let mut clap_info = None;
-                    let mut config_file_attributes: Vec<_> = ConfigFileAttr::iter()
-                        .map(|ty| OptionalAttribute {
-                            value: None,
-                            accepted_literals: match ty {
-                                ConfigFileAttr::Optional => AcceptedLiterals::BoolOnly,
-                                _ => AcceptedLiterals::StringOnly,
-                            },
-                            ty,
-                        })
-                        .collect();
+        .filter(|a| a.path().is_ident(CONFIG_FILE_KEY))
+        .map(handle_file_attribute)
+}
 
-                    'next_arg: for arg in args {
-                        match arg {
-                            NestedMeta::Meta(ref meta) => {
-                                if path_to_string(meta.path()) == CLAP_KEY {
-                                    match meta {
-                                        Meta::List(list) => {
-                                            clap_info =
-                                                Some(parse_clap_field_attribute(list, false));
-                                            continue 'next_arg;
-                                        }
-                                        _ => panic!("clap attribute must match \"clap(...)\""),
-                                    }
-                                } else {
-                                    for atr in &mut config_file_attributes {
-                                        match try_set_optional_attribute::<ConfigFileAttr>(
-                                            meta, atr, false,
-                                        ) {
-                                            SetOptionalAttrResult::NameMismatch => (),
-                                            SetOptionalAttrResult::Set => continue 'next_arg,
-                                            SetOptionalAttrResult::ErrorAlreadySet => {
-                                                panic!("attempted to set {} twice", atr.ty)
-                                            }
-                                        }
-                                    }
-                                    panic!("unknown attribute: {:#?}", arg)
-                                }
-                            }
-                            _ => panic!(
-                                "config arguments must match file(format = \"...\", clap_key = \
-                                 \"...\", env = \"...\", default = \"...\", optional = \
-                                 true/[false])"
-                            ),
-                        }
-                    }
+fn handle_file_attribute(attr: &Attribute) -> ParsedConfigFileAttributes {
+    let nested = attr
+        .parse_args_with(Punctuated::<Meta, Token![,]>::parse_terminated)
+        .expect(
+            "config arguments must match file(format = \"...\", clap_key = \
+                             \"...\", env = \"...\", default = \"...\", optional = \
+                             true/[false])",
+        );
 
-                    let mut file_format = None;
-                    let mut env_key = None;
-                    let mut optional = false;
-                    let mut default = None;
+    let mut clap_info = None;
+    let mut config_file_attributes: Vec<_> = ConfigFileAttr::iter()
+        .map(|ty| OptionalAttribute {
+            value: None,
+            accepted_literals: match ty {
+                ConfigFileAttr::Optional => AcceptedLiterals::Bool,
+                _ => AcceptedLiterals::String,
+            },
+            ty,
+        })
+        .collect();
 
-                    for atr in config_file_attributes {
-                        match atr.ty {
-                            ConfigFileAttr::EnvKey => env_key = atr.value,
-                            ConfigFileAttr::Optional => {
-                                if let Some(atr) = atr.value {
-                                    optional = atr.parse().unwrap()
-                                }
-                            }
-                            ConfigFileAttr::Default => {
-                                if let Some(atr) = atr.value {
-                                    default = Some(atr)
-                                }
-                            }
-                            ConfigFileAttr::Format => {
-                                if let Some(format_atr) = atr.value {
-                                    assert_eq!(format_atr.chars().next().unwrap(), '"');
-                                    assert_eq!(format_atr.chars().last().unwrap(), '"');
+    'next_arg: for arg in nested {
+        if path_to_string(arg.path()) == CLAP_KEY {
+            let clap_list = arg
+                .require_list()
+                .expect("clap attribute must match \"clap(...)\"");
 
-                                    let drop_fst_and_lst: String = format_atr
-                                        .chars()
-                                        .skip(1)
-                                        .take(format_atr.len() - 2)
-                                        .collect();
-                                    file_format = Some(str_to_config_format_repr(&drop_fst_and_lst))
-                                }
-                            }
-                        }
-                    }
-
-                    if clap_info.is_none() && env_key.is_none() && default.is_none() {
-                        panic!("you must specify at least one of (clap, env, default)");
-                    }
-                    if let Some(clap_info) = &clap_info {
-                        if let ClapOption::None | ClapOption::Empty = clap_info.long {
-                            panic!(
-                                "if #[clap] attribute is specified for configuration file, nested \
-                                 `long = ...` must be provided"
-                            );
-                        }
-                    }
-
-                    let clap_info = clap_info.map(|info| info.normalize(Default::default()));
-
-                    ParsedConfigFileAttributes {
-                        default,
-                        optional,
-                        clap_info,
-                        env_key,
-                        file_format: file_format.unwrap_or_else(|| {
-                            panic!("`format` attribute of config file must be set")
-                        }),
+            clap_info = Some(parse_clap_field_attribute(clap_list, false));
+            continue 'next_arg;
+        } else {
+            for attr in &mut config_file_attributes {
+                match try_set_optional_attribute::<ConfigFileAttr>(&arg, attr, false) {
+                    SetOptionalAttrResult::NameMismatch => (),
+                    SetOptionalAttrResult::Set => continue 'next_arg,
+                    SetOptionalAttrResult::ErrorAlreadySet => {
+                        panic!("attempted to set {} twice", attr.ty)
                     }
                 }
-                _ => panic!("config must match #[config(...)]"),
-            },
-        })
+            }
+            panic!("unknown attribute: {:#?}", arg)
+        }
+    }
+
+    let mut file_format = None;
+    let mut env_key = None;
+    let mut optional = false;
+    let mut default = None;
+
+    for attr in config_file_attributes {
+        match attr.ty {
+            ConfigFileAttr::EnvKey => env_key = attr.value,
+            ConfigFileAttr::Optional => {
+                if let Some(attr) = attr.value {
+                    optional = attr.parse().unwrap()
+                }
+            }
+            ConfigFileAttr::Default => {
+                if let Some(attr) = attr.value {
+                    default = Some(attr)
+                }
+            }
+            ConfigFileAttr::Format => {
+                if let Some(format_attr) = attr.value {
+                    assert_eq!(format_attr.chars().next().unwrap(), '"');
+                    assert_eq!(format_attr.chars().last().unwrap(), '"');
+
+                    let drop_fst_and_lst: String = format_attr
+                        .chars()
+                        .skip(1)
+                        .take(format_attr.len() - 2)
+                        .collect();
+                    file_format = Some(str_to_config_format_repr(&drop_fst_and_lst))
+                }
+            }
+        }
+    }
+
+    if clap_info.is_none() && env_key.is_none() && default.is_none() {
+        panic!("you must specify at least one of (clap, env, default)");
+    }
+    if let Some(clap_info) = &clap_info {
+        if let ClapOption::None | ClapOption::Empty = clap_info.long {
+            panic!(
+                "if #[clap] attribute is specified for configuration file, nested \
+                             `long = ...` must be provided"
+            );
+        }
+    }
+
+    let clap_info = clap_info.map(|info| info.normalize(Default::default()));
+
+    ParsedConfigFileAttributes {
+        default,
+        optional,
+        clap_info,
+        env_key,
+        file_format: file_format
+            .unwrap_or_else(|| panic!("`format` attribute of config file must be set")),
+    }
 }
 
 pub(crate) struct ConfigFilesInfo {
@@ -178,7 +168,7 @@ pub(crate) fn extract_configs_info(class_attributes: &[Attribute]) -> ConfigFile
         env_key,
         optional,
         default,
-    } in handle_file_attribute(class_attributes)
+    } in handle_file_attributes(class_attributes)
     {
         if optional && default.is_some() {
             panic!(

@@ -21,7 +21,7 @@ fn two_vars_one_is_default() {
     struct TwoVarConfig {
         #[source(env = "a")]
         a: String,
-        #[source(env = "b", default = "\"default b\".into()")]
+        #[source(env = "b", default = "default b")]
         b: String,
     }
 

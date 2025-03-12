@@ -97,14 +97,12 @@ In this example, the `env` source will be checked first.
 - If the value is not found in any of the sources, an error will be returned
 - Field type must implement `serde::de::Deserialize`
 - All attributes except `default` must match either `attribute = literal`, or
-  `attribute(init_from = "...valid Rust code...")`, or `attribute`. In the last case, the "key"
+  `attribute(init_from = ...valid Rust code...)`, or `attribute`. In the last case, the "key"
   value (the CLI argument name, the environment variable name, or the config file key name —
   depending on the source) will match the field name. For example, annotating `my_field` with
   `#[clap]` means that the value could be assigned to `my_field` by specifying
   `--my_field=...` via the CLI
 - Attribute `default` must match `default = "...valid Rust code..."` or `default`
-- `expression` from `default = "expression"` will be interpreted as a Rust expression (for example, `expression` could
-  be a function call)
 - If the `deserialize_with` attribute is not set, values from command line,
   environment will be deserialized according to [hjson syntax](https://hjson.github.io/)
 
@@ -246,7 +244,7 @@ If a field is annotated with the `source` attribute, at least one of the followi
 
 #### `default`
 
-Numeric literal or valid Rust code.\
+Valid Rust code that will be assigned to the field if other sources are not found.\
 If the attribute is set without a value (`#[source(default)]`),
 the default value is [`Default::default()`](https://doc.rust-lang.org/std/default/trait.Default.html#tymethod.default).
 
@@ -255,11 +253,19 @@ the default value is [`Default::default()`](https://doc.rust-lang.org/std/defaul
 ```rust
 #[config]
 struct AppConfig {
-    #[source(default = "Vec::new()")]
+    #[source(default = Vec::new())]
     buf: Vec<String>,
     #[source(default)]
     opt: Option<String>
     // Option::<String>::default() will be assigned (None)
+}
+```
+**Note:** For String fields [Into::into()](https://doc.rust-lang.org/std/convert/trait.Into.html#tymethod.into) will be invoked under the hood. So it is possible to use `&str` to initialize String field:
+```rust
+#[config]
+struct AppConfig {
+    #[source(default = "default value")]
+    string: String,
 }
 ```
 

@@ -19,10 +19,9 @@ impl InitFrom {
 
 #[derive(Copy, Clone)]
 pub(crate) enum AcceptedLiterals {
-    AnyLiteral,
-    StringOnly,
-    CharOnly,
-    BoolOnly,
+    String,
+    Char,
+    Bool,
 }
 
 pub(crate) struct OptionalAttribute<T: ToString> {
@@ -74,23 +73,25 @@ pub(crate) fn match_literal_or_init_from(
 ) -> Option<InitFrom> {
     match attribute {
         Meta::Path(_) => None,
-        Meta::NameValue(MetaNameValue { lit, .. }) => Some(match accepted_literals {
-            AcceptedLiterals::AnyLiteral => InitFrom::Literal(lit.clone()),
-            AcceptedLiterals::StringOnly => {
+        Meta::NameValue(MetaNameValue {
+            value: Expr::Lit(ExprLit { lit, .. }),
+            ..
+        }) => Some(match accepted_literals {
+            AcceptedLiterals::String => {
                 if matches!(lit, Lit::Str(_)) {
                     InitFrom::Literal(lit.clone())
                 } else {
                     panic!("expected string, got {:#?}", lit);
                 }
             }
-            AcceptedLiterals::BoolOnly => {
+            AcceptedLiterals::Bool => {
                 if matches!(lit, Lit::Bool(_)) {
                     InitFrom::Literal(lit.clone())
                 } else {
                     panic!("expected bool, got {:#?}", lit);
                 }
             }
-            AcceptedLiterals::CharOnly => {
+            AcceptedLiterals::Char => {
                 if matches!(lit, Lit::Char(_)) {
                     InitFrom::Literal(lit.clone())
                 } else {
@@ -98,35 +99,37 @@ pub(crate) fn match_literal_or_init_from(
                 }
             }
         }),
-        Meta::List(MetaList { nested: args, .. }) => {
-            if args.len() != 1 {
-                panic!("len of nested args must be exactly 1");
+        Meta::List(list) => {
+            let args = list
+                .parse_args_with(Punctuated::<Meta, Token![,]>::parse_terminated)
+                .unwrap();
+
+            if !args[0].path().is_ident("init_from") {
+                panic!("len of nested args must be exactly 1 and it must be \"init_from = ...\"")
             }
+
             match &args[0] {
-                NestedMeta::Meta(attribute) => {
-                    let atr_path = attribute.path();
-                    let init_from = parse_quote! { init_from };
-                    if *atr_path != init_from {
-                        panic!(
-                            "expected {:#?}, got {:#?}",
-                            init_from.to_token_stream().to_string(),
-                            atr_path.to_token_stream().to_string()
-                        )
-                    } else {
-                        match attribute {
-                            Meta::NameValue(MetaNameValue { lit, .. }) => {
-                                if let Lit::Str(lit) = lit {
-                                    Some(InitFrom::Fn(lit.value()))
-                                } else {
-                                    panic!("init_from attribute must be a string literal")
-                                }
-                            }
-                            any => panic!("unexpected attribute type, must be literal: {:#?}", any),
-                        }
-                    }
+                Meta::NameValue(expr) => {
+                    Some(InitFrom::Fn(expr.value.to_token_stream().to_string()))
                 }
-                arg => panic!("unexpected attribute: {:#?}", arg),
+                any => panic!(
+                    "unexpected attribute type, must be string literal: {:#?}",
+                    any
+                ),
             }
+        }
+        other => panic!("Unknown attribute meta {}", other.to_token_stream()),
+    }
+}
+
+pub(crate) fn extract_default(meta: &Meta) -> Option<String> {
+    match meta {
+        Meta::Path(_) => None,
+        Meta::List(_) => {
+            panic!("default attribute must be #[source(default = \"...\")] of #[source(default)]")
+        }
+        Meta::NameValue(MetaNameValue { value, .. }) => {
+            Some(format!("{{{}}}", value.to_token_stream()))
         }
     }
 }

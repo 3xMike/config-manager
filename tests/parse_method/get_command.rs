@@ -11,7 +11,7 @@ fn get_command() {
     struct Config {
         #[source(clap(long, short))]
         a: i32,
-        #[source(env, default = "\"abc\".to_string()")]
+        #[source(env, default = "abc")]
         b: String,
         #[source(clap, config = "bpm")]
         c: i32,

@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use std::collections::HashMap;
 
 use config_manager::{config, ConfigInit};
@@ -18,14 +20,11 @@ const SUFFIX: &str = "_env";
 struct MethodConfig {
     #[source(clap(long, short, help_heading = "A heading"))]
     a: i32,
-    #[source(
-        env(init_from = "&format!(\"b{}\", SUFFIX)"),
-        default = "\"abc\".to_string()"
-    )]
+    #[source(env(init_from = &format!("b{SUFFIX}")), default = "abc")]
     b: String,
     #[source(config = "bpm")]
     c: i32,
-    #[source(default = "HashMap::new()")]
+    #[source(default = HashMap::new())]
     d: HashMap<i32, String>,
     #[source(clap(flag), default = false)]
     f: bool,

@@ -35,23 +35,10 @@ pub(crate) fn binary_name() -> TokenStream {
 }
 
 pub(crate) fn path_to_string(path: &Path) -> String {
-    let segments = &path.segments;
-    assert_eq!(
-        segments.len(),
-        1,
-        "not a single segment in path: {:?}",
-        path
-    );
-    segments
-        .first()
-        .unwrap()
-        .ident
+    path.get_ident()
+        .unwrap_or_else(|| panic!("Path {} is not an ident", path.to_token_stream()))
         .to_token_stream()
         .to_string()
-}
-
-pub(crate) fn compare_attribute_name(a: &Attribute, name: &str) -> bool {
-    name == path_to_string(&a.path)
 }
 
 pub(crate) fn is_type_an_optional(ty: &Type) -> Option<Type> {

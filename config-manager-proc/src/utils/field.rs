@@ -69,10 +69,7 @@ pub(crate) fn process_field(
 }
 
 pub(crate) fn field_is_flatten(field: &Field) -> bool {
-    field
-        .attrs
-        .iter()
-        .any(|attr| compare_attribute_name(attr, FLATTEN))
+    field.attrs.iter().any(|attr| attr.path().is_ident(FLATTEN))
 }
 
 pub(crate) fn process_flatten_field(field: Field) -> ProcessFieldResult {
@@ -99,7 +96,7 @@ pub(crate) fn field_is_subcommand(field: &Field) -> bool {
     field
         .attrs
         .iter()
-        .any(|attr| compare_attribute_name(attr, SUBCOMMAND))
+        .any(|attr| attr.path().is_ident(SUBCOMMAND))
 }
 
 pub(crate) fn process_subcommand_field(
@@ -152,7 +149,7 @@ fn number_of_crate_attribute(field: &Field) -> usize {
         .attrs
         .iter()
         .filter(|attr| {
-            [SOURCE_KEY, FLATTEN, SUBCOMMAND].contains(&path_to_string(&attr.path).as_str())
+            [SOURCE_KEY, FLATTEN, SUBCOMMAND].contains(&path_to_string(attr.path()).as_str())
         })
         .count()
 }
