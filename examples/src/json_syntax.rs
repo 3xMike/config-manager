@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use std::collections::HashMap;
 
 use config_manager::{config, ConfigInit};
@@ -32,5 +34,5 @@ struct Config {
 
 fn main() {
     let cfg = <Config as ConfigInit>::parse();
-    dbg!(cfg);
+    let _ = dbg!(cfg);
 }
