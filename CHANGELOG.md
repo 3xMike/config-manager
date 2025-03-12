@@ -5,9 +5,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased] - ReleaseDate
+## [0.3.1](https://github.com/3xMike/config-manager/releases/tag/0.3.1) - 2025-03-12
+### Fixed
+- Bug "Can't deserialize ... EoF" on setting empty string via env/cli/config.
+
 ## [0.3.0](https://github.com/3xMike/config-manager/releases/tag/0.3.0) - 2025-03-12
 ### Changed
-- default and init_from now takes code without quotation marks. I.e. following old code is invalid:
+- `default` and `init_from` now takes code without quotation marks. I.e. following old code is invalid:
 ```rust
 #[config]
 struct Config {

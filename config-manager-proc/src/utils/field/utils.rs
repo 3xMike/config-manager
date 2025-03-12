@@ -70,7 +70,14 @@ pub(crate) struct ExtractedAttributes {
 impl ExtractedAttributes {
     fn deserializer(&self) -> TokenStream {
         match &self.deserializer {
-            None => quote!(::config_manager::__private::deser_hjson::from_str(&value)),
+            None => quote! {
+                let value = if value.is_empty() {
+                    "\"\"".to_string()
+                } else {
+                    value
+                };
+                ::config_manager::__private::deser_hjson::from_str(&value)
+            },
             Some(deser_fn) => {
                 let deser_fn = deser_fn.trim_matches('\"');
                 format_to_tokens!("({deser_fn})(&value)")

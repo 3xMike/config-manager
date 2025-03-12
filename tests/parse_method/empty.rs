@@ -3,8 +3,14 @@ use config_manager::config;
 use crate::{assert_ok_and_compare, set_env, test_env};
 
 fn empty_env() {
-    fn set_1(_x: &str) -> Result<i32, String> {
-        Ok(1)
+    fn set(x: &str) -> Result<i32, String> {
+        if x.is_empty() {
+            Ok(1)
+        } else if x == "\"\"" {
+            Ok(2)
+        } else {
+            Err(format!("not empty argument: {x}"))
+        }
     }
 
     #[derive(Debug, PartialEq)]
@@ -16,25 +22,26 @@ fn empty_env() {
     struct EmptyConfig {
         #[source(clap)]
         cli: String,
-        #[source(clap, deserialize_with = "set_1")]
+        #[source(clap, deserialize_with = "set")]
         cli_deser: i32,
         #[source(env)]
         env: String,
-        #[source(env, deserialize_with = "set_1")]
+        #[source(env, deserialize_with = "set")]
         env_deser: i32,
         #[source(config = "empty")]
         file: String,
-        #[source(config = "empty", deserialize_with = "set_1")]
+        #[source(config = "empty", deserialize_with = "set")]
         file_deser: i32,
     }
     set_env("env", "");
+    set_env("env_deser", "");
     assert_ok_and_compare(&EmptyConfig {
         cli: String::new(),
-        cli_deser: 1,
+        cli_deser: 2,
         env: String::new(),
         env_deser: 1,
         file: String::new(),
-        file_deser: 1,
+        file_deser: 2,
     });
 }
 
