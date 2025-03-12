@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2022 JSRPC “Kryptonite”
 
-use crate::{utils::meta_value_lit, *};
+use crate::*;
 
 pub(crate) enum InitFrom {
     Fn(String),
@@ -104,26 +104,18 @@ pub(crate) fn match_literal_or_init_from(
                 .parse_args_with(Punctuated::<Meta, Token![,]>::parse_terminated)
                 .unwrap();
 
-            if args.len() != 1 {
-                panic!("len of nested args must be exactly 1");
+            if !args[0].path().is_ident("init_from") {
+                panic!("len of nested args must be exactly 1 and it must be \"init_from = ...\"")
             }
 
-            let attr_path = args[0].path();
-            let init_from = parse_quote! { init_from };
-            if *attr_path != init_from {
-                panic!(
-                    "expected {:#?}, got {:#?}",
-                    init_from.to_token_stream().to_string(),
-                    attr_path.to_token_stream().to_string()
-                )
-            } else {
-                match &args[0] {
-                    Meta::NameValue(meta_value_lit!(lit)) => Some(InitFrom::Fn(lit.value())),
-                    any => panic!(
-                        "unexpected attribute type, must be string literal: {:#?}",
-                        any
-                    ),
+            match &args[0] {
+                Meta::NameValue(expr) => {
+                    Some(InitFrom::Fn(expr.value.to_token_stream().to_string()))
                 }
+                any => panic!(
+                    "unexpected attribute type, must be string literal: {:#?}",
+                    any
+                ),
             }
         }
         other => panic!("Unknown attribute meta {}", other.to_token_stream()),
@@ -136,6 +128,8 @@ pub(crate) fn extract_default(meta: &Meta) -> Option<String> {
         Meta::List(_) => {
             panic!("default attribute must be #[source(default = \"...\")] of #[source(default)]")
         }
-        Meta::NameValue(MetaNameValue { value, .. }) => Some(value.to_token_stream().to_string()),
+        Meta::NameValue(MetaNameValue { value, .. }) => {
+            Some(format!("{{{}}}", value.to_token_stream()))
+        }
     }
 }

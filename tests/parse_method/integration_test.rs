@@ -29,9 +29,9 @@ struct MethodConfig {
     #[source(clap, env, config)]
     a: i32,
     #[source(
-        env(init_from = "stringify!(env_b)"),
+        env(init_from = stringify!(env_b)),
         default = "abc",
-        config(init_from = "CONFIG_NAME")
+        config(init_from = CONFIG_NAME)
     )]
     b: String,
     #[source(config = "bpm", clap(short = 'b'))]
