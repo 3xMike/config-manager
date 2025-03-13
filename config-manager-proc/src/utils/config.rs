@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2022 JSRPC “Kryptonite”
 
+// TODO
 use std::collections::HashSet;
 
 use strum::IntoEnumIterator;
@@ -33,18 +34,17 @@ struct ParsedConfigFileAttributes {
     default: Option<String>,
 }
 
-fn handle_file_attributes(
-    class_attributes: &[Attribute],
-) -> Result<Vec<ParsedConfigFileAttributes>> {
+fn handle_file_attributes(class_attributes: &[Meta]) -> Result<Vec<ParsedConfigFileAttributes>> {
     class_attributes
         .iter()
-        .filter(|a| a.path().is_ident(CONFIG_FILE_KEY))
+        .filter(|m| m.path().is_ident(CONFIG_FILE_KEY))
         .map(handle_file_attribute)
         .collect()
 }
 
-fn handle_file_attribute(attr: &Attribute) -> Result<ParsedConfigFileAttributes> {
+fn handle_file_attribute(attr: &Meta) -> Result<ParsedConfigFileAttributes> {
     let nested = attr
+        .require_list()?
         .parse_args_with(Punctuated::<Meta, Token![,]>::parse_terminated)
         .expect(
             "config arguments must match file(format = \"...\", clap_key = \
@@ -159,7 +159,7 @@ pub(crate) struct ConfigFileInfo {
     pub(crate) default_path: TokenStream,
 }
 
-pub(crate) fn extract_configs_info(class_attributes: &[Attribute]) -> Result<ConfigFilesInfo> {
+pub(crate) fn extract_configs_info(class_attributes: &[Meta]) -> Result<ConfigFilesInfo> {
     let mut configs_attributes = Vec::<ConfigFileInfo>::new();
     let mut configs_as_clap_args = Punctuated::new();
     let mut config_clap_keys = HashSet::<String>::new();

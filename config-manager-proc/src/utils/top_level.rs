@@ -15,14 +15,14 @@ pub(crate) struct AppTopLevelInfo {
 }
 
 impl AppTopLevelInfo {
-    pub(crate) fn extract(class_attrs: &[Attribute]) -> Result<Self> {
+    pub(crate) fn extract(crate_attrs: &[Meta], docs: Option<String>) -> Result<Self> {
         Ok(Self {
-            env_prefix: extract_env_prefix(class_attrs),
-            clap_app_info: extract_clap_app(class_attrs)?,
-            configs: extract_configs_info(class_attrs)?,
-            debug_cmd_input: extract_debug_cmd_input(class_attrs),
-            table_name: extract_table_name(class_attrs),
-            default_order: extract_source_order(class_attrs),
+            env_prefix: extract_env_prefix(crate_attrs),
+            clap_app_info: extract_clap_app(crate_attrs, docs)?,
+            configs: extract_configs_info(crate_attrs)?,
+            debug_cmd_input: extract_debug_cmd_input(crate_attrs),
+            table_name: extract_table_name(crate_attrs),
+            default_order: extract_source_order(crate_attrs),
         })
     }
 }
@@ -68,15 +68,12 @@ impl ToTokens for NormalClapAppInfo {
     }
 }
 
-pub(crate) fn extract_clap_app(attrs: &[Attribute]) -> Result<NormalClapAppInfo> {
-    let docs = extract_docs(attrs);
-
+pub(crate) fn extract_clap_app(attrs: &[Meta], docs: Option<String>) -> Result<NormalClapAppInfo> {
     attrs
         .iter()
         .find(|a| a.path().is_ident(CLAP_KEY))
-        .map(|attr| {
-            let list = attr
-                .meta
+        .map(|meta| {
+            let list = meta
                 .require_list()
                 .expect("clap attribute must match #[clap(...)");
             parse_clap_app_attribute(list, docs)
@@ -85,10 +82,10 @@ pub(crate) fn extract_clap_app(attrs: &[Attribute]) -> Result<NormalClapAppInfo>
         .normalize()
 }
 
-pub(crate) fn extract_env_prefix(attrs: &[Attribute]) -> Option<String> {
+pub(crate) fn extract_env_prefix(attrs: &[Meta]) -> Option<String> {
     match attrs.iter().find(|a| a.path().is_ident(ENV_PREFIX_KEY)) {
         None => Some(String::new()),
-        Some(attr) => match &attr.meta {
+        Some(meta) => match meta {
             Meta::Path(_) => None,
             Meta::NameValue(meta_value_lit!(input_name)) => Some(input_name.value()),
             _ => panic!(
@@ -99,36 +96,32 @@ pub(crate) fn extract_env_prefix(attrs: &[Attribute]) -> Option<String> {
     }
 }
 
-pub(crate) fn extract_debug_cmd_input(attrs: &[Attribute]) -> Option<TokenStream> {
-    attrs
-        .iter()
-        .find(|a| a.path().is_ident(DEBUG_INPUT_KEY))
-        .map(|attr| {
-            attr.meta
-                .require_list()
-                .unwrap_or_else(|_| {
-                    panic!("{DEBUG_INPUT_KEY} attribute must match #[{DEBUG_INPUT_KEY}(...)")
-                })
-                .tokens
-                .clone()
-        })
+pub(crate) fn extract_debug_cmd_input(attrs: &[Meta]) -> Option<TokenStream> {
+    let meta = attrs.iter().find(|a| a.path().is_ident(DEBUG_INPUT_KEY))?;
+
+    Some(
+        meta.require_list()
+            .unwrap_or_else(|_| {
+                panic!("{DEBUG_INPUT_KEY} attribute must match #[{DEBUG_INPUT_KEY}(...)")
+            })
+            .tokens
+            .clone(),
+    )
 }
 
-pub(crate) fn extract_table_name(attrs: &[Attribute]) -> Option<String> {
-    attrs
-        .iter()
-        .find(|a| a.path().is_ident(TABLE_NAME_KEY))
-        .map(|attr| match &attr.meta {
-            Meta::NameValue(meta_value_lit!(lit_str)) => lit_str.value(),
-            _ => panic!("{TABLE_NAME_KEY} must match #[{TABLE_NAME_KEY} = \"...\"]"),
-        })
+pub(crate) fn extract_table_name(attrs: &[Meta]) -> Option<String> {
+    let meta = attrs.iter().find(|a| a.path().is_ident(TABLE_NAME_KEY))?;
+
+    match meta {
+        Meta::NameValue(meta_value_lit!(lit_str)) => Some(lit_str.value()),
+        _ => panic!("{TABLE_NAME_KEY} must match #[{TABLE_NAME_KEY} = \"...\"]"),
+    }
 }
 
-pub(crate) fn extract_source_order(attrs: &[Attribute]) -> Option<ExtractedAttributes> {
-    let attr = attrs.iter().find(|a| a.path().is_ident(SOURCE_ORDER_KEY))?;
+pub(crate) fn extract_source_order(attrs: &[Meta]) -> Option<ExtractedAttributes> {
+    let meta = attrs.iter().find(|m| m.path().is_ident(SOURCE_ORDER_KEY))?;
 
-    let list = attr
-        .meta
+    let list = meta
         .require_list()
         .unwrap_or_else(|_| panic!("{SOURCE_ORDER_KEY} must match #[{SOURCE_ORDER_KEY}(...)]"));
     let nested = list

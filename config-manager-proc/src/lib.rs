@@ -4,7 +4,7 @@
 mod generator;
 mod utils;
 
-use std::{fmt::Write, str::FromStr};
+use std::str::FromStr;
 
 use proc_macro::TokenStream as TokenStream0;
 use proc_macro2::{Span, TokenStream};
@@ -12,7 +12,9 @@ use quote::{quote, quote_spanned, ToTokens};
 use syn::{parse::Parser, punctuated::Punctuated, spanned::Spanned, *};
 
 use generator::*;
-use utils::{config::*, field::*, panic_site, panic_span, parser::*, top_level::*};
+use utils::{
+    attributes::extract_docs, config::*, field::*, panic_site, panic_span, parser::*, top_level::*,
+};
 
 pub(crate) use syn::Error;
 pub(crate) type Result<T> = std::result::Result<T, Error>;
@@ -24,14 +26,24 @@ pub(crate) type Result<T> = std::result::Result<T, Error>;
 #[proc_macro_attribute]
 pub fn config(attrs: TokenStream0, input: TokenStream0) -> TokenStream0 {
     let parser = Punctuated::<Meta, Token![,]>::parse_terminated;
-    let attrs = parser.parse(attrs).unwrap();
-    let mut annotations = String::from("#[derive(::config_manager::__private::__Config__)]");
-    attrs.iter().for_each(|attr| {
-        std::write!(&mut annotations, "\n{}", (quote! { #[#attr]})).unwrap();
-    });
+    let attrs = match parser.parse(attrs) {
+        Ok(attrs) => attrs,
+        Err(err) => return err.into_compile_error().into(),
+    }
+    .into_iter()
+    .collect::<Vec<_>>();
+
     let mut annotations =
-        TokenStream0::from_str(&annotations).expect("can't parse annotations as tokenstream");
-    annotations.extend(input);
+        TokenStream0::from_str("#[derive(::config_manager::__private::__Config__)]").unwrap();
+    annotations.extend(input.clone());
+
+    let input = parse_macro_input!(input as DeriveInput);
+
+    let new_code: TokenStream0 = match generate_config_inner(input, &attrs) {
+        Ok(res) => res.into(),
+        Err(err) => return err.into_compile_error().into(),
+    };
+    annotations.extend(new_code);
     annotations
 }
 
@@ -51,17 +63,13 @@ pub fn config(attrs: TokenStream0, input: TokenStream0) -> TokenStream0 {
         __debug_cmd_input__
     )
 )]
-pub fn generate_config(input: TokenStream0) -> TokenStream0 {
-    let input = parse_macro_input!(input as DeriveInput);
-
-    match generate_config_inner(input) {
-        Ok(res) => res.into(),
-        Err(err) => err.into_compile_error().into(),
-    }
+pub fn generate_config(_input: TokenStream0) -> TokenStream0 {
+    TokenStream0::new()
 }
 
-fn generate_config_inner(input: DeriveInput) -> Result<TokenStream> {
+fn generate_config_inner(input: DeriveInput, crate_attrs: &[Meta]) -> Result<TokenStream> {
     let class_ident = input.ident;
+    let docs = extract_docs(&input.attrs);
 
     let AppTopLevelInfo {
         env_prefix,
@@ -70,7 +78,7 @@ fn generate_config_inner(input: DeriveInput) -> Result<TokenStream> {
         debug_cmd_input,
         table_name,
         default_order,
-    } = AppTopLevelInfo::extract(&input.attrs)?;
+    } = AppTopLevelInfo::extract(crate_attrs, docs)?;
 
     let class: DataStruct = match input.data {
         Data::Struct(s) => s,
@@ -117,8 +125,13 @@ pub fn generate_flatten(input: TokenStream0) -> TokenStream0 {
 }
 
 fn generate_flatten_inner(input: DeriveInput) -> Result<TokenStream> {
-    let table_name = extract_table_name(&input.attrs);
-    let default_order = extract_source_order(&input.attrs);
+    let class_attrs = input
+        .attrs
+        .into_iter()
+        .map(|attr| attr.meta)
+        .collect::<Vec<_>>();
+    let table_name = extract_table_name(&class_attrs);
+    let default_order = extract_source_order(&class_attrs);
 
     let class_ident = input.ident;
     let class: DataStruct = match input.data {
