@@ -35,14 +35,15 @@ struct ParsedConfigFileAttributes {
 
 fn handle_file_attributes(
     class_attributes: &[Attribute],
-) -> impl Iterator<Item = ParsedConfigFileAttributes> + '_ {
+) -> Result<Vec<ParsedConfigFileAttributes>> {
     class_attributes
         .iter()
         .filter(|a| a.path().is_ident(CONFIG_FILE_KEY))
         .map(handle_file_attribute)
+        .collect()
 }
 
-fn handle_file_attribute(attr: &Attribute) -> ParsedConfigFileAttributes {
+fn handle_file_attribute(attr: &Attribute) -> Result<ParsedConfigFileAttributes> {
     let nested = attr
         .parse_args_with(Punctuated::<Meta, Token![,]>::parse_terminated)
         .expect(
@@ -69,7 +70,7 @@ fn handle_file_attribute(attr: &Attribute) -> ParsedConfigFileAttributes {
                 .require_list()
                 .expect("clap attribute must match \"clap(...)\"");
 
-            clap_info = Some(parse_clap_field_attribute(clap_list, false));
+            clap_info = Some(parse_clap_field_attribute(clap_list, false)?);
             continue 'next_arg;
         } else {
             for attr in &mut config_file_attributes {
@@ -131,16 +132,18 @@ fn handle_file_attribute(attr: &Attribute) -> ParsedConfigFileAttributes {
         }
     }
 
-    let clap_info = clap_info.map(|info| info.normalize(Default::default()));
+    let clap_info = clap_info
+        .map(|info| info.normalize(Default::default()))
+        .transpose()?;
 
-    ParsedConfigFileAttributes {
+    Ok(ParsedConfigFileAttributes {
         default,
         optional,
         clap_info,
         env_key,
         file_format: file_format
             .unwrap_or_else(|| panic!("`format` attribute of config file must be set")),
-    }
+    })
 }
 
 pub(crate) struct ConfigFilesInfo {
@@ -156,7 +159,7 @@ pub(crate) struct ConfigFileInfo {
     pub(crate) default_path: TokenStream,
 }
 
-pub(crate) fn extract_configs_info(class_attributes: &[Attribute]) -> ConfigFilesInfo {
+pub(crate) fn extract_configs_info(class_attributes: &[Attribute]) -> Result<ConfigFilesInfo> {
     let mut configs_attributes = Vec::<ConfigFileInfo>::new();
     let mut configs_as_clap_args = Punctuated::new();
     let mut config_clap_keys = HashSet::<String>::new();
@@ -168,7 +171,7 @@ pub(crate) fn extract_configs_info(class_attributes: &[Attribute]) -> ConfigFile
         env_key,
         optional,
         default,
-    } in handle_file_attributes(class_attributes)
+    } in handle_file_attributes(class_attributes)?
     {
         if optional && default.is_some() {
             panic!(
@@ -224,8 +227,8 @@ pub(crate) fn extract_configs_info(class_attributes: &[Attribute]) -> ConfigFile
         }
     }
 
-    ConfigFilesInfo {
+    Ok(ConfigFilesInfo {
         configs_attributes,
         configs_as_clap_args,
-    }
+    })
 }

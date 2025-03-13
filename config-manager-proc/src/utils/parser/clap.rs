@@ -22,10 +22,20 @@ impl<T> ClapOption<T> {
             ClapOption::Empty => Some(alternative()),
         }
     }
+
+    fn on_empty_res<F: FnOnce() -> Result<T>>(self, alternative: F) -> Result<Option<T>> {
+        match self {
+            ClapOption::None => Ok(None),
+            ClapOption::Some(v) => Ok(Some(v)),
+            ClapOption::Empty => Some(alternative()).transpose(),
+        }
+    }
 }
 
-#[derive(Default, Clone)]
+#[derive(Clone)]
 pub(crate) struct ClapFieldParseResult {
+    pub(crate) span: Span,
+
     pub(crate) docs: Option<String>,
     pub(crate) long: MaybeString,
     pub(crate) short: MaybeString,
@@ -36,6 +46,31 @@ pub(crate) struct ClapFieldParseResult {
 }
 
 impl ClapFieldParseResult {
+    pub(crate) fn new(span: Span) -> Self {
+        Self {
+            span,
+            docs: Default::default(),
+            long: Default::default(),
+            short: Default::default(),
+            help: Default::default(),
+            long_help: Default::default(),
+            help_heading: Default::default(),
+            flag: false,
+        }
+    }
+
+    fn get_docs<S: AsRef<str>>(&self, attr_name: S) -> Result<String> {
+        match self.docs.clone() {
+            Some(val) => Ok(format!("\"{val}\"")),
+            None => Err(Error::new(
+                self.span,
+                format!("if clap({}) is used without value, field docs must be provided. But there are no docs", attr_name.as_ref())
+            )),
+        }
+    }
+}
+
+impl ClapFieldParseResult {
     pub(crate) fn normal_long(&self, field_name: &str) -> String {
         match &self.long {
             ClapOption::None | ClapOption::Empty => format!("\"{field_name}\""),
@@ -43,25 +78,34 @@ impl ClapFieldParseResult {
         }
     }
 
-    pub(crate) fn normalize(self, field_name: &str) -> NormalClapFieldInfo {
-        NormalClapFieldInfo {
+    pub(crate) fn normalize(self, field_name: &str) -> Result<NormalClapFieldInfo> {
+        Ok(NormalClapFieldInfo {
+            span: self.span,
+            help: self.help.clone().on_empty_res(|| self.get_docs("help"))?,
+            long_help: self
+                .long_help
+                .clone()
+                .on_empty_res(|| self.get_docs("long_help"))?,
             long: self.normal_long(field_name),
-            short: self.short.on_empty(||field_name
-                .chars()
-                .next()
-                .expect("empty clap(short) is forbidden for config files")
-                .to_token_stream()
-                .to_string()),
-            help: self.help.on_empty(|| format!("\"{}\"", self.docs.clone().expect("if clap(help) is used without value, struct docs must be provided. But there are no docs"))),
-            long_help: self.long_help.on_empty(|| format!("\"{}\"", self.docs.expect("if clap(long_help) is used without value, struct docs must be provided. But there are no docs"))),
+            short: self.short.on_empty_res(|| {
+                field_name
+                    .chars()
+                    .next()
+                    .ok_or_else(|| {
+                        Error::new(self.span, "empty clap(short) is forbidden for config files")
+                    })
+                    .map(|c| c.to_token_stream().to_string())
+            })?,
             help_heading: self.help_heading,
             flag: self.flag,
-        }
+        })
     }
 }
 
-#[derive(Default)]
 pub(crate) struct ClapAppParseResult {
+    pub(crate) span: Span,
+
+    pub(crate) docs: Option<String>,
     pub(crate) name: Option<String>,
     pub(crate) version: MaybeString,
     pub(crate) author: MaybeString,
@@ -70,16 +114,47 @@ pub(crate) struct ClapAppParseResult {
 }
 
 impl ClapAppParseResult {
-    pub(crate) fn normalize(self, docs: Option<String>) -> NormalClapAppInfo {
-        NormalClapAppInfo {
+    pub(crate) fn new(span: Span) -> Self {
+        Self {
+            span,
+            docs: Default::default(),
+            name: Default::default(),
+            version: Default::default(),
+            author: Default::default(),
+            about: Default::default(),
+            long_about: Default::default(),
+        }
+    }
+
+    pub(crate) fn normalize(self) -> Result<NormalClapAppInfo> {
+        Ok(NormalClapAppInfo {
+            long_about: self
+                .long_about
+                .clone()
+                .on_empty_res(|| self.get_docs("long_about"))?,
             name: match self.name {
                 None => "::config_manager::__private::clap::crate_name!()".to_string(),
                 Some(name) => name,
             },
-            version: self.version.on_empty(|| "::config_manager::__private::clap::crate_version!()".to_string()),
-            author: self.author.on_empty(|| "::config_manager::__private::clap::crate_authors!(\"\\n\")".to_string()),
-            about: self.about.on_empty(|| "::config_manager::__private::clap::crate_description!()".to_string()),
-            long_about: self.long_about.on_empty(|| format!("\"{}\"",docs.expect("if clap(long_about) is used without value, struct docs must be provided. But there are no docs"))),
+            version: self
+                .version
+                .on_empty(|| "::config_manager::__private::clap::crate_version!()".to_string()),
+            author: self.author.on_empty(|| {
+                "::config_manager::__private::clap::crate_authors!(\"\\n\")".to_string()
+            }),
+            about: self
+                .about
+                .on_empty(|| "::config_manager::__private::clap::crate_description!()".to_string()),
+        })
+    }
+
+    fn get_docs<S: AsRef<str>>(&self, attr_name: S) -> Result<String> {
+        match self.docs.clone() {
+            Some(val) => Ok(format!("\"{val}\"")),
+            None => Err(Error::new(
+                self.span,
+                format!("if clap({}) is used without value, struct docs must be provided. But there are no docs", attr_name.as_ref())
+            )),
         }
     }
 }
@@ -91,52 +166,47 @@ fn meta_to_maybe(meta: &Meta) -> MaybeString {
 }
 
 fn meta_to_option(meta: &Meta) -> Option<String> {
-    Some(
-        match_literal_or_init_from(meta, AcceptedLiterals::String)
-            .as_ref()
-            .map(InitFrom::as_string)
-            .unwrap_or_else(|| panic!("{} attribute can't be empty", path_to_string(meta.path()))),
-    )
+    match_literal_or_init_from(meta, AcceptedLiterals::String)
+        .as_ref()
+        .map(InitFrom::as_string)
 }
 
-pub(crate) fn parse_clap_app_attribute(attributes: &MetaList) -> ClapAppParseResult {
-    let mut res = ClapAppParseResult::default();
+pub(crate) fn parse_clap_app_attribute(
+    attributes: &MetaList,
+    docs: Option<String>,
+) -> Result<ClapAppParseResult> {
+    let mut res = ClapAppParseResult::new(attributes.span());
+    res.docs = docs;
 
-    let attrs = &attributes
-        .parse_args_with(Punctuated::<Meta, Token![,]>::parse_terminated)
-        .unwrap();
+    let attrs = &attributes.parse_args_with(Punctuated::<Meta, Token![,]>::parse_terminated)?;
 
     for attr in attrs {
         match path_to_string(attr.path()).as_str() {
             "name" => {
-                res.name = match attr {
-                    Meta::Path(_) => panic!("long_about attribute can't be path"),
-                    other => meta_to_option(other),
-                }
+                res.name = meta_to_option(attr);
             }
             "version" => res.version = meta_to_maybe(attr),
             "author" => res.author = meta_to_maybe(attr),
             "about" => res.about = meta_to_maybe(attr),
             "long_about" => res.long_about = meta_to_maybe(attr),
-            other => panic!(
+            other => panic_span!(
+                attr.span(),
                 "clap attibute \"{other}\" is not supported, allowed attrs: {:?}",
                 ALLOWED_CLAP_APP_ATTRS
             ),
         };
     }
 
-    res
+    Ok(res)
 }
 
 pub(crate) fn parse_clap_field_attribute(
     attributes: &MetaList,
     is_bool: bool,
-) -> ClapFieldParseResult {
-    let mut res = ClapFieldParseResult::default();
+) -> Result<ClapFieldParseResult> {
+    let mut res = ClapFieldParseResult::new(attributes.span());
 
-    let attrs = &attributes
-        .parse_args_with(Punctuated::<Meta, Token![,]>::parse_terminated)
-        .unwrap();
+    let attrs = &attributes.parse_args_with(Punctuated::<Meta, Token![,]>::parse_terminated)?;
 
     for attr in attrs {
         match path_to_string(attr.path()).as_str() {
@@ -150,25 +220,28 @@ pub(crate) fn parse_clap_field_attribute(
             "long_help" => res.long_help = meta_to_maybe(attr),
             "help_heading" => {
                 res.help_heading = match attr {
-                    Meta::Path(_) => panic!("help_heading attribute can't be path"),
+                    Meta::Path(_) => {
+                        panic_span!(attr.span(), "help_heading attribute can't be path")
+                    }
                     other => meta_to_option(other),
                 }
             }
             "flag" => {
                 if !is_bool {
-                    panic!("Only boolean arguments can be flags")
+                    panic_span!(attr.span(), "Only boolean arguments can be flags")
                 }
                 if !matches!(attr, Meta::Path(_)) {
-                    panic!("flag attribute can't take any value(s)")
+                    panic_span!(attr.span(), "flag attribute can't take any value(s)")
                 }
                 res.flag = true
             }
-            other => panic!(
+            other => panic_span!(
+                attr.span(),
                 "clap attibute \"{other}\" is not supported, allowed attrs: {:?}",
                 ALLOWED_CLAP_FIELD_ATTRS
             ),
         };
     }
 
-    res
+    Ok(res)
 }

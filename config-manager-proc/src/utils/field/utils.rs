@@ -10,12 +10,18 @@ impl ToTokens for ClapInitialization {
         tokens.extend(match self {
             Self::None => unreachable!(),
             Self::Flatten(tp) => {
-                quote!(args(<#tp as ::config_manager::__private::Flatten>::get_args()))
+                quote_spanned! {tp.span()=>
+                    args(<#tp as ::config_manager::__private::Flatten>::get_args())
+                }
             }
             Self::Subcommand(tp) => {
-                quote!(<#tp as ::config_manager::__private::clap::Subcommand>::augment_subcommands(app))
+                quote_spanned! {tp.span()=>
+                    <#tp as ::config_manager::__private::clap::Subcommand>::augment_subcommands(app)
+                }
             }
-            Self::Normal(info) => quote!(arg(#info)),
+            Self::Normal(info) => quote_spanned! {info.span()=>
+                 arg(#info)
+            },
         })
     }
 }
@@ -46,7 +52,7 @@ impl ToTokens for NormalClapFieldInfo {
                 None => TokenStream::new(),
                 Some(help_heading) => format_to_tokens!(".help_heading({help_heading})"),
             };
-            quote! {
+            quote_spanned! {self.span=>
                 clap::Arg::new(#name)
                 #long
                 #short
@@ -112,19 +118,16 @@ impl ExtractedAttributes {
         )
     }
 
-    pub(super) fn clap_field(self, field_name: &str) -> Option<NormalClapFieldInfo> {
+    pub(super) fn clap_field(self, field_name: &str) -> Result<Option<NormalClapFieldInfo>> {
         for attr in self.variables {
             if let FieldAttribute::Clap(clap) = attr {
-                return Some(clap.normalize(field_name));
+                return Some(clap.normalize(field_name)).transpose();
             }
         }
-        None
+        Ok(None)
     }
 
     pub(super) fn gen_init(&self, field_name: &str) -> TokenStream {
-        if self.variables.is_empty() && self.default.is_none() {
-            panic!("No source is set for the {field_name} field");
-        }
         let default_initialization = match &self.default {
             None => quote!(::std::option::Option::None),
             Some(d) if d.inner.is_none() => quote!(::std::option::Option::Some(
@@ -197,15 +200,12 @@ impl FieldAttribute {
 
 impl Display for FieldAttribute {
     fn fmt(&self, f: &mut __private::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{}",
-            match self {
-                Self::Clap(_) => "command line",
-                Self::Config(_) => "configuration file",
-                Self::Env(_) => "env",
-            }
-        )
+        let source = match self {
+            Self::Clap(_) => "command line",
+            Self::Config(_) => "configuration file",
+            Self::Env(_) => "env",
+        };
+        write!(f, "{source}",)
     }
 }
 
@@ -275,41 +275,41 @@ pub(crate) struct Default {
 pub(super) fn extract_attributes(
     field: Field,
     table_name: &Option<String>,
-) -> Option<ExtractedAttributes> {
+) -> Result<Option<ExtractedAttributes>> {
     let is_bool = field.ty.to_token_stream().to_string() == "bool";
     let is_string = is_string(&field.ty);
     let docs = extract_docs(&field.attrs);
-    let field_name = field.ident.expect("Unnamed fields are forbidden");
 
     let mut res = ExtractedAttributes::default();
 
-    let attr = field.attrs.iter().find(|a| a.path().is_ident(SOURCE_KEY))?;
+    let attr = match field.attrs.iter().find(|a| a.path().is_ident(SOURCE_KEY)) {
+        None => return Ok(None),
+        Some(attr) => attr,
+    };
 
-    let nested = attr
-        .parse_args_with(Punctuated::<Meta, Token![,]>::parse_terminated)
-        .unwrap();
+    let nested = attr.parse_args_with(Punctuated::<Meta, Token![,]>::parse_terminated)?;
 
     for arg in nested {
         match path_to_string(arg.path()).as_str() {
-            CLAP_KEY => match arg {
-                Meta::Path(_) => res
+            CLAP_KEY => match &arg {
+                Meta::Path(_p) => res
                     .variables
-                    .push(FieldAttribute::Clap(ClapFieldParseResult::default())),
+                    .push(FieldAttribute::Clap(ClapFieldParseResult::new(arg.span()))),
                 Meta::List(clap_metalist) => {
-                    let mut clap_attributes = parse_clap_field_attribute(&clap_metalist, is_bool);
+                    let mut clap_attributes = parse_clap_field_attribute(clap_metalist, is_bool)?;
                     clap_attributes.docs = docs.clone();
                     res.variables.push(FieldAttribute::Clap(clap_attributes));
                 }
                 _ => {
-                    panic!(
-                        "clap attribute must match #[clap(...)] or \
-                                                     #[clap]"
+                    panic_span!(
+                        arg.span(),
+                        "clap attribute must match #[clap(...)] or #[clap]"
                     )
                 }
             },
             DEFAULT => {
                 if res.default.is_some() {
-                    panic!("Default can be assigned only once per field")
+                    panic_span!(arg.span(), "Default can be assigned only once per field")
                 }
                 let mut default_init = extract_default(&arg);
                 if is_string {
@@ -332,23 +332,20 @@ pub(super) fn extract_attributes(
             })),
             DESERIALIZER => {
                 if res.deserializer.is_some() {
-                    panic!(
-                        "Deserialize_with can be assigned only once \
-                                                     per field"
+                    panic_span!(
+                        arg.span(),
+                        "Deserialize_with can be assigned only once per field"
                     )
                 }
                 res.deserializer = match_literal_or_init_from(&arg, AcceptedLiterals::String)
                     .as_ref()
                     .map(InitFrom::as_string);
             }
-            other => panic!(
-                "Unknown source attribute {other} of the field \
-                                             {field_name}"
-            ),
+            _ => panic_span!(arg.span(), "Unknown source attribute"),
         };
     }
 
-    Some(res)
+    Ok(Some(res))
 }
 
 fn is_string(ty: &Type) -> bool {

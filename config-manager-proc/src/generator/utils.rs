@@ -14,7 +14,9 @@ pub(crate) struct InitializationInfo {
     pub(crate) debug_cmd_input: Option<TokenStream>,
 }
 
-pub(crate) fn generate_final_struct_and_supporting_code(info: InitializationInfo) -> TokenStream {
+pub(crate) fn generate_final_struct_and_supporting_code(
+    info: InitializationInfo,
+) -> Result<TokenStream> {
     let InitializationInfo {
         env_prefix,
         class_ident,
@@ -29,7 +31,7 @@ pub(crate) fn generate_final_struct_and_supporting_code(info: InitializationInfo
         debug_cmd_input,
     } = info;
 
-    let clap_app = gen_clap_app(clap_app_info, configs_as_clap_args, clap_fields);
+    let clap_app = gen_clap_app(clap_app_info, configs_as_clap_args, clap_fields)?;
     let clap_data = gen_clap_matches(debug_cmd_input);
     let config_file_data = gen_config_file_data(configs_attributes);
     let env_data = gen_env_data();
@@ -44,7 +46,7 @@ pub(crate) fn generate_final_struct_and_supporting_code(info: InitializationInfo
         &config_file_data,
     );
 
-    quote! {
+    Ok(quote! {
         impl ::config_manager::ConfigInit for #class_ident {
             fn parse_options(options: ::config_manager::ConfigOptions) -> ::std::result::Result<Self, ::config_manager::Error> {
                 #initialization
@@ -54,18 +56,18 @@ pub(crate) fn generate_final_struct_and_supporting_code(info: InitializationInfo
                 #clap_app
             }
         }
-    }
+    })
 }
 
 pub(crate) fn generate_flatten_implementation(
     class: Ident,
     clap_info: Punctuated<ClapInitialization, Token![.]>,
     fields_init: Vec<(Ident, TokenStream)>,
-) -> TokenStream {
-    let get_args_impl = generate_get_args_impl(clap_info.into_iter());
+) -> Result<TokenStream> {
+    let get_args_impl = generate_get_args_impl(clap_info.into_iter())?;
     let parse_impl = generate_parse_impl(fields_init, &class);
 
-    quote! {
+    Ok(quote! {
         impl ::config_manager::__private::Flatten for #class {
             fn get_args() -> ::std::vec::Vec<::config_manager::__private::clap::Arg> {
                 #get_args_impl
@@ -82,5 +84,5 @@ pub(crate) fn generate_flatten_implementation(
                 #parse_impl
             }
         }
-    }
+    })
 }

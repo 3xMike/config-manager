@@ -15,15 +15,15 @@ pub(crate) struct AppTopLevelInfo {
 }
 
 impl AppTopLevelInfo {
-    pub(crate) fn extract(class_attrs: &[Attribute]) -> Self {
-        Self {
+    pub(crate) fn extract(class_attrs: &[Attribute]) -> Result<Self> {
+        Ok(Self {
             env_prefix: extract_env_prefix(class_attrs),
-            clap_app_info: extract_clap_app(class_attrs),
-            configs: extract_configs_info(class_attrs),
+            clap_app_info: extract_clap_app(class_attrs)?,
+            configs: extract_configs_info(class_attrs)?,
             debug_cmd_input: extract_debug_cmd_input(class_attrs),
             table_name: extract_table_name(class_attrs),
             default_order: extract_source_order(class_attrs),
-        }
+        })
     }
 }
 
@@ -68,7 +68,7 @@ impl ToTokens for NormalClapAppInfo {
     }
 }
 
-pub(crate) fn extract_clap_app(attrs: &[Attribute]) -> NormalClapAppInfo {
+pub(crate) fn extract_clap_app(attrs: &[Attribute]) -> Result<NormalClapAppInfo> {
     let docs = extract_docs(attrs);
 
     attrs
@@ -79,10 +79,10 @@ pub(crate) fn extract_clap_app(attrs: &[Attribute]) -> NormalClapAppInfo {
                 .meta
                 .require_list()
                 .expect("clap attribute must match #[clap(...)");
-            parse_clap_app_attribute(list)
+            parse_clap_app_attribute(list, docs)
         })
-        .unwrap_or_default()
-        .normalize(docs)
+        .unwrap_or_else(|| Ok(ClapAppParseResult::new(Span::call_site())))?
+        .normalize()
 }
 
 pub(crate) fn extract_env_prefix(attrs: &[Attribute]) -> Option<String> {
@@ -144,7 +144,9 @@ pub(crate) fn extract_source_order(attrs: &[Attribute]) -> Option<ExtractedAttri
             )
         });
         match path_to_string(p).as_str() {
-            CLAP_KEY => res.variables.push(FieldAttribute::Clap(Default::default())),
+            CLAP_KEY => res
+                .variables
+                .push(FieldAttribute::Clap(ClapFieldParseResult::new(p.span()))),
             ENV_KEY => res.variables.push(FieldAttribute::Env(Default::default())),
             CONFIG_KEY => res
                 .variables

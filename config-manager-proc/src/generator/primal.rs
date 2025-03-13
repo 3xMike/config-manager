@@ -7,19 +7,22 @@ pub(super) fn gen_clap_app(
     clap_app_info: NormalClapAppInfo,
     configs_as_clap_args: Punctuated<ClapInitialization, Token![.]>,
     mut clap_fields: Vec<ClapInitialization>,
-) -> TokenStream {
+) -> Result<TokenStream> {
     let subcommand = if let Some(pos) = clap_fields
         .iter()
         .position(|init| matches!(init, ClapInitialization::Subcommand(_)))
     {
         let sub = clap_fields.remove(pos);
-        if clap_fields
+        match clap_fields
             .iter()
-            .any(|init| matches!(init, ClapInitialization::Subcommand(_)))
+            .find(|init| matches!(init, ClapInitialization::Subcommand(_)))
         {
-            panic!("Structure can contain only one subcommand field");
+            Some(second_sub) => panic_span!(
+                second_sub.span(),
+                "Structure can contain only one subcommand field"
+            ),
+            None => sub.to_token_stream(),
         }
-        sub.to_token_stream()
     } else {
         quote!(app)
     };
@@ -44,7 +47,7 @@ pub(super) fn gen_clap_app(
     } else {
         quote!(.#configs_as_clap_args)
     };
-    quote! {
+    Ok(quote! {
         {
             use ::config_manager::__private::clap;
             let app = #clap_app_info
@@ -52,7 +55,7 @@ pub(super) fn gen_clap_app(
                 #fields;
             #subcommand
         }
-    }
+    })
 }
 
 pub(super) fn gen_clap_matches(debug_cmd_input: Option<TokenStream>) -> TokenStream {

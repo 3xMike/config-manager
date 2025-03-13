@@ -19,6 +19,8 @@ pub(crate) enum ClapInitialization {
 
 #[derive(Clone)]
 pub(crate) struct NormalClapFieldInfo {
+    pub(crate) span: Span,
+
     pub(crate) long: String,
     pub(crate) short: Option<String>,
     pub(crate) help: Option<String>,
@@ -37,7 +39,7 @@ pub(crate) fn process_field(
     field: Field,
     table_name: &Option<String>,
     default_order: &Option<ExtractedAttributes>,
-) -> ProcessFieldResult {
+) -> Result<ProcessFieldResult> {
     let field_name = field.ident.clone().expect("Unnamed fields are forbidden");
     if number_of_crate_attribute(&field) > 1 {
         panic!(
@@ -47,25 +49,25 @@ pub(crate) fn process_field(
         );
     }
 
-    let attributes_order = extract_attributes(field, table_name)
+    let attributes_order = extract_attributes(field, table_name)?
         .or_else(|| default_order.clone())
         .unwrap_or_else(|| ExtractedAttributes {
             variables: vec![
-                FieldAttribute::Clap(Default::default()),
+                FieldAttribute::Clap(ClapFieldParseResult::new(field_name.span())),
                 FieldAttribute::Env(Default::default()),
                 FieldAttribute::Config(Default::default()),
             ],
             ..Default::default()
         });
 
-    ProcessFieldResult {
+    Ok(ProcessFieldResult {
         initialization: attributes_order.gen_init(&field_name.to_string()),
-        clap_field: match attributes_order.clap_field(&field_name.to_string()) {
+        clap_field: match attributes_order.clap_field(&field_name.to_string())? {
             Some(init) => ClapInitialization::Normal(init),
             None => ClapInitialization::None,
         },
         name: field_name,
-    }
+    })
 }
 
 pub(crate) fn field_is_flatten(field: &Field) -> bool {
@@ -92,11 +94,11 @@ pub(crate) fn process_flatten_field(field: Field) -> ProcessFieldResult {
     }
 }
 
-pub(crate) fn field_is_subcommand(field: &Field) -> bool {
+pub(crate) fn field_is_subcommand(field: &Field) -> Option<&Attribute> {
     field
         .attrs
         .iter()
-        .any(|attr| attr.path().is_ident(SUBCOMMAND))
+        .find(|attr| attr.path().is_ident(SUBCOMMAND))
 }
 
 pub(crate) fn process_subcommand_field(
