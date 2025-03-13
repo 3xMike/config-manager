@@ -29,8 +29,24 @@ macro_rules! meta_value_lit {
     };
 }
 
+macro_rules! panic_site {
+    ($($message:tt)*) => {
+        return Err(crate::Error::new(
+            proc_macro2::Span::call_site(),
+            format!($($message)*),
+        ))
+    };
+}
+macro_rules! panic_span {
+    ($span: expr, $($message:tt)*) => {
+        return Err(crate::Error::new($span, format!($($message)*)))
+    };
+}
+
 pub(crate) use format_to_tokens;
 pub(crate) use meta_value_lit;
+pub(crate) use panic_site;
+pub(crate) use panic_span;
 
 pub(crate) fn option_to_tokens(opt: &Option<String>) -> TokenStream {
     match opt {
