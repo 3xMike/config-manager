@@ -171,5 +171,3 @@ fn generate_flatten_inner(input: DeriveInput) -> Result<TokenStream> {
 
     generate_flatten_implementation(class_ident, clap_fields, fields_json_definition)
 }
-
-// TODO: create test on         default_order(clap, env)

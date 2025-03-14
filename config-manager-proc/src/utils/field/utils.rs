@@ -330,10 +330,13 @@ pub(super) fn extract_attributes(
                 if res.deserializer.is_some() {
                     panic_span!(
                         arg.span(),
-                        "Deserialize_with can be assigned only once per field"
+                        "deserialize_with can be assigned only once per field"
                     )
                 }
-                res.deserializer = meta_to_option(&arg)?; // TODO
+                if matches!(arg, Meta::Path(_)) {
+                    panic_span!(arg.span(), "deserialize_with can't be empty")
+                }
+                res.deserializer = meta_to_option(&arg)?;
             }
             _ => panic_span!(arg.span(), "Unknown source attribute"),
         };
