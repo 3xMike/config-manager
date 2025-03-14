@@ -159,10 +159,10 @@ impl ClapAppParseResult {
     }
 }
 
-fn meta_to_maybe(meta: &Meta) -> MaybeString {
-    match_literal_or_init_from(meta, AcceptedLiterals::String)
+fn meta_to_maybe(meta: &Meta) -> Result<MaybeString> {
+    Ok(match_literal_or_init_from(meta, AcceptedLiterals::String)?
         .map(|value| ClapOption::Some(value.as_string()))
-        .unwrap_or(ClapOption::Empty)
+        .unwrap_or(ClapOption::Empty))
 }
 
 pub(crate) fn parse_clap_app_attribute(
@@ -177,12 +177,12 @@ pub(crate) fn parse_clap_app_attribute(
     for attr in attrs {
         match path_to_string(attr.path()).as_str() {
             "name" => {
-                res.name = meta_to_option(attr);
+                res.name = meta_to_option(attr)?;
             }
-            "version" => res.version = meta_to_maybe(attr),
-            "author" => res.author = meta_to_maybe(attr),
-            "about" => res.about = meta_to_maybe(attr),
-            "long_about" => res.long_about = meta_to_maybe(attr),
+            "version" => res.version = meta_to_maybe(attr)?,
+            "author" => res.author = meta_to_maybe(attr)?,
+            "about" => res.about = meta_to_maybe(attr)?,
+            "long_about" => res.long_about = meta_to_maybe(attr)?,
             other => panic_span!(
                 attr.span(),
                 "clap attibute \"{other}\" is not supported, allowed attrs: {:?}",
@@ -204,20 +204,20 @@ pub(crate) fn parse_clap_field_attribute(
 
     for attr in attrs {
         match path_to_string(attr.path()).as_str() {
-            "long" => res.long = meta_to_maybe(attr),
+            "long" => res.long = meta_to_maybe(attr)?,
             "short" => {
-                res.short = match_literal_or_init_from(attr, AcceptedLiterals::Char)
+                res.short = match_literal_or_init_from(attr, AcceptedLiterals::Char)?
                     .map(|value| ClapOption::Some(value.as_string()))
                     .unwrap_or(ClapOption::Empty)
             }
-            "help" => res.help = meta_to_maybe(attr),
-            "long_help" => res.long_help = meta_to_maybe(attr),
+            "help" => res.help = meta_to_maybe(attr)?,
+            "long_help" => res.long_help = meta_to_maybe(attr)?,
             "help_heading" => {
                 res.help_heading = match attr {
                     Meta::Path(_) => {
                         panic_span!(attr.span(), "help_heading attribute can't be path")
                     }
-                    other => meta_to_option(other),
+                    other => meta_to_option(other)?,
                 }
             }
             "flag" => {

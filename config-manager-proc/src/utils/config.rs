@@ -43,7 +43,8 @@ fn handle_file_attributes(class_attributes: &[Meta]) -> Result<Vec<ParsedConfigF
 
 fn handle_file_attribute(attr: &Meta) -> Result<ParsedConfigFileAttributes> {
     let nested = attr
-        .require_list()?
+        .require_list()
+        .map_err(|_| Error::new(attr.span(), "file attribute must match \"file(...)\""))?
         .parse_args_with(Punctuated::<Meta, Token![,]>::parse_terminated)?;
 
     let mut clap_info = None;
@@ -112,9 +113,8 @@ fn handle_file_attribute(attr: &Meta) -> Result<ParsedConfigFileAttributes> {
         optional,
         clap_info,
         env_key,
-        file_format: file_format.ok_or_else(|| {
-            Error::new(attr.span(), "`format` attribute of config file must be set")
-        })?,
+        file_format: file_format
+            .err_on_none(attr.span(), "`format` attribute of config file must be set")?,
     })
 }
 
@@ -127,9 +127,10 @@ fn set_config_attr<N: AsRef<str>>(
     if already_set {
         panic_span!(arg.span(), "attempted to set {attr_name} twice")
     }
-    Ok(Some(meta_to_option(arg).ok_or_else(|| {
-        Error::new(arg.span(), format!("file({attr_name}) can't be empty"))
-    })?))
+    Ok(Some(meta_to_option(arg)?.err_on_none(
+        arg.span(),
+        format!("file({attr_name}) can't be empty"),
+    )?))
 }
 
 pub(crate) struct ConfigFilesInfo {

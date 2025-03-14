@@ -26,65 +26,74 @@ pub(crate) enum AcceptedLiterals {
 pub(crate) fn match_literal_or_init_from(
     attribute: &Meta,
     accepted_literals: AcceptedLiterals,
-) -> Option<InitFrom> {
+) -> Result<Option<InitFrom>> {
     match attribute {
-        Meta::Path(_) => None,
+        Meta::Path(_) => Ok(None),
         Meta::NameValue(MetaNameValue {
             value: Expr::Lit(ExprLit { lit, .. }),
             ..
-        }) => Some(match accepted_literals {
+        }) => Ok(Some(match accepted_literals {
             AcceptedLiterals::String => {
                 if matches!(lit, Lit::Str(_)) {
                     InitFrom::Literal(lit.clone())
                 } else {
-                    panic!("expected string, got {:#?}", lit);
+                    panic_span!(attribute.span(), "expected string, got {:#?}", lit);
                 }
             }
             AcceptedLiterals::Char => {
                 if matches!(lit, Lit::Char(_)) {
                     InitFrom::Literal(lit.clone())
                 } else {
-                    panic!("expected char, got {:#?}", lit);
+                    panic_span!(attribute.span(), "expected char, got {:#?}", lit);
                 }
             }
-        }),
+        })),
         Meta::List(list) => {
-            let args = list
-                .parse_args_with(Punctuated::<Meta, Token![,]>::parse_terminated)
-                .unwrap();
+            let args = list.parse_args_with(Punctuated::<Meta, Token![,]>::parse_terminated)?;
 
             if !args[0].path().is_ident("init_from") {
-                panic!("len of nested args must be exactly 1 and it must be \"init_from = ...\"")
+                panic_span!(
+                    attribute.span(),
+                    "len of nested args must be exactly 1 and it must be \"init_from = ...\""
+                )
             }
 
             match &args[0] {
                 Meta::NameValue(expr) => {
-                    Some(InitFrom::Fn(expr.value.to_token_stream().to_string()))
+                    Ok(Some(InitFrom::Fn(expr.value.to_token_stream().to_string())))
                 }
-                any => panic!(
+                any => panic_span!(
+                    attribute.span(),
                     "unexpected attribute type, must be string literal: {:#?}",
                     any
                 ),
             }
         }
-        other => panic!("Unknown attribute meta {}", other.to_token_stream()),
+        other => panic_span!(
+            attribute.span(),
+            "Unknown attribute meta {}",
+            other.to_token_stream()
+        ),
     }
 }
 
-pub(crate) fn extract_default(meta: &Meta) -> Option<String> {
+pub(crate) fn extract_default(meta: &Meta) -> Result<Option<String>> {
     match meta {
-        Meta::Path(_) => None,
+        Meta::Path(_) => Ok(None),
         Meta::List(_) => {
-            panic!("default attribute must be #[source(default = \"...\")] of #[source(default)]")
+            panic_span!(
+                meta.span(),
+                "default attribute must be #[source(default = \"...\")] of #[source(default)]"
+            )
         }
         Meta::NameValue(MetaNameValue { value, .. }) => {
-            Some(format!("{{{}}}", value.to_token_stream()))
+            Ok(Some(format!("{{{}}}", value.to_token_stream())))
         }
     }
 }
 
-pub(crate) fn meta_to_option(meta: &Meta) -> Option<String> {
-    match_literal_or_init_from(meta, AcceptedLiterals::String)
+pub(crate) fn meta_to_option(meta: &Meta) -> Result<Option<String>> {
+    Ok(match_literal_or_init_from(meta, AcceptedLiterals::String)?
         .as_ref()
-        .map(InitFrom::as_string)
+        .map(InitFrom::as_string))
 }

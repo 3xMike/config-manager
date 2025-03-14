@@ -311,7 +311,7 @@ pub(super) fn extract_attributes(
                 if res.default.is_some() {
                     panic_span!(arg.span(), "Default can be assigned only once per field")
                 }
-                let mut default_init = extract_default(&arg);
+                let mut default_init = extract_default(&arg)?;
                 if is_string {
                     default_init = default_init.map(|s| format!("::std::convert::Into::into({s})"));
                 }
@@ -320,10 +320,10 @@ pub(super) fn extract_attributes(
                 })
             }
             ENV_KEY => res.variables.push(FieldAttribute::Env(Env {
-                inner: meta_to_option(&arg),
+                inner: meta_to_option(&arg)?,
             })),
             CONFIG_KEY => res.variables.push(FieldAttribute::Config(Config {
-                key: meta_to_option(&arg),
+                key: meta_to_option(&arg)?,
                 table: table_name.clone(),
             })),
             DESERIALIZER => {
@@ -333,7 +333,7 @@ pub(super) fn extract_attributes(
                         "Deserialize_with can be assigned only once per field"
                     )
                 }
-                res.deserializer = meta_to_option(&arg); // TODO
+                res.deserializer = meta_to_option(&arg)?; // TODO
             }
             _ => panic_span!(arg.span(), "Unknown source attribute"),
         };

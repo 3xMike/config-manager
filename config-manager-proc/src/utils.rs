@@ -56,3 +56,14 @@ pub(crate) fn option_to_tokens(opt: &Option<String>) -> TokenStream {
         }
     }
 }
+
+pub(crate) trait PanicOnNone {
+    type Output;
+    fn err_on_none<S: AsRef<str>>(self, span: Span, message: S) -> Result<Self::Output>;
+}
+impl<T> PanicOnNone for Option<T> {
+    type Output = T;
+    fn err_on_none<S: AsRef<str>>(self, span: Span, message: S) -> Result<T> {
+        self.ok_or_else(|| Error::new(span, message.as_ref()))
+    }
+}

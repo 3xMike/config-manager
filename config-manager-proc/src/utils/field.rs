@@ -40,14 +40,7 @@ pub(crate) fn process_field(
     table_name: &Option<String>,
     default_order: &Option<ExtractedAttributes>,
 ) -> Result<ProcessFieldResult> {
-    let field_name = field.ident.clone().expect("Unnamed fields are forbidden");
-    if number_of_crate_attribute(&field) > 1 {
-        panic!(
-            "Error: source attribute must be the only attribute of the field (field's name: \
-             \"{}\")",
-            &field_name
-        );
-    }
+    let field_name = field.ident.clone().unwrap();
 
     let attributes_order = extract_attributes(field, table_name)?
         .or_else(|| default_order.clone())
@@ -74,24 +67,17 @@ pub(crate) fn field_is_flatten(field: &Field) -> bool {
     field.attrs.iter().any(|attr| attr.path().is_ident(FLATTEN))
 }
 
-pub(crate) fn process_flatten_field(field: Field) -> ProcessFieldResult {
-    let name = field.ident.clone().expect("Unnamed fields are forbidden");
-    if number_of_crate_attribute(&field) != 1 {
-        panic!(
-            "Error: flatten attribute must be the only attribute of the field (field's name: \
-             \"{}\")",
-            &name
-        );
-    }
+pub(crate) fn process_flatten_field(field: Field) -> Result<ProcessFieldResult> {
+    let name = field.ident.clone().unwrap();
     let ty = field.ty;
 
-    ProcessFieldResult {
+    Ok(ProcessFieldResult {
         name,
         clap_field: ClapInitialization::Flatten(ty.clone()),
         initialization: quote! {
             <#ty as ::config_manager::__private::Flatten>::parse(&env_data, &config_file_data ,&clap_data, env_prefix.clone())?
         },
-    }
+    })
 }
 
 pub(crate) fn field_is_subcommand(field: &Field) -> Option<&Attribute> {
@@ -104,15 +90,8 @@ pub(crate) fn field_is_subcommand(field: &Field) -> Option<&Attribute> {
 pub(crate) fn process_subcommand_field(
     field: Field,
     dbg_cmd: &Option<TokenStream>,
-) -> ProcessFieldResult {
-    let name = field.ident.clone().expect("Unnamed fields are forbidden");
-    if number_of_crate_attribute(&field) != 1 {
-        panic!(
-            "Error: subcommand attribute must be the only attribute of the field (field's name: \
-             \"{}\")",
-            &name
-        );
-    }
+) -> Result<ProcessFieldResult> {
+    let name = field.ident.clone().unwrap();
     let string_name = name.to_string();
     let ty = field.ty;
 
@@ -139,19 +118,29 @@ pub(crate) fn process_subcommand_field(
         )
     };
 
-    ProcessFieldResult {
+    Ok(ProcessFieldResult {
         name,
         clap_field: ClapInitialization::Subcommand(ty),
         initialization,
-    }
+    })
 }
 
-fn number_of_crate_attribute(field: &Field) -> usize {
-    field
+pub(crate) fn check_field_attributes(field: &Field) -> Result<()> {
+    let applied_crate_attrs = field
         .attrs
         .iter()
-        .filter(|attr| {
-            [SOURCE_KEY, FLATTEN, SUBCOMMAND].contains(&path_to_string(attr.path()).as_str())
+        .filter_map(|attr| {
+            [SOURCE_KEY, FLATTEN, SUBCOMMAND]
+                .into_iter()
+                .find(|crate_attr| crate_attr == &path_to_string(attr.path()))
         })
-        .count()
+        .collect::<Vec<_>>();
+
+    if applied_crate_attrs.len() > 1 {
+        let message =
+            format!("Can't use {applied_crate_attrs:?} at the same time. Use only one of them");
+        Err(Error::new(field.ident.clone().unwrap().span(), message))
+    } else {
+        Ok(())
+    }
 }

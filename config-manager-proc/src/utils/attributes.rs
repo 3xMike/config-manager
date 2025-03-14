@@ -20,9 +20,18 @@ pub(crate) const SOURCE_ORDER_KEY: &str = "default_order";
 pub(crate) const FLATTEN: &str = "flatten";
 pub(crate) const SUBCOMMAND: &str = "subcommand";
 
-pub(super) const ALLOWED_CLAP_APP_ATTRS: &[&str] =
+pub(crate) const ALLOWED_CRATE_ATTRS: &[&str] = &[
+    ENV_PREFIX_KEY,
+    CONFIG_FILE_KEY,
+    DEBUG_INPUT_KEY,
+    TABLE_NAME_KEY,
+    SOURCE_ORDER_KEY,
+    CLAP_KEY,
+];
+pub(crate) const ALLOWED_FLATTEN_ATTRS: &[&str] = &[TABLE_NAME_KEY, SOURCE_ORDER_KEY];
+pub(crate) const ALLOWED_CLAP_APP_ATTRS: &[&str] =
     &["name", "version", "author", "about", "long_about"];
-pub(super) const ALLOWED_CLAP_FIELD_ATTRS: &[&str] =
+pub(crate) const ALLOWED_CLAP_FIELD_ATTRS: &[&str] =
     &["help", "long_help", "short", "long", "flag", "help_heading"];
 
 #[derive(EnumIter, strum_macros::Display)]

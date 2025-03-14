@@ -13,7 +13,13 @@ use syn::{parse::Parser, punctuated::Punctuated, spanned::Spanned, *};
 
 use generator::*;
 use utils::{
-    attributes::extract_docs, config::*, field::*, panic_site, panic_span, parser::*, top_level::*,
+    attributes::{extract_docs, ALLOWED_FLATTEN_ATTRS},
+    config::*,
+    field::*,
+    panic_site, panic_span,
+    parser::*,
+    top_level::*,
+    PanicOnNone,
 };
 
 pub(crate) use syn::Error;
@@ -89,10 +95,12 @@ fn generate_config_inner(input: DeriveInput, crate_attrs: &[Meta]) -> Result<Tok
     let mut clap_fields = Vec::new();
 
     for field in class.fields {
+        check_field_attributes(&field)?;
+
         let res = if field_is_flatten(&field) {
-            process_flatten_field(field)
+            process_flatten_field(field)?
         } else if field_is_subcommand(&field).is_some() {
-            process_subcommand_field(field, &debug_cmd_input)
+            process_subcommand_field(field, &debug_cmd_input)?
         } else {
             process_field(field, &table_name, &default_order)?
         };
@@ -130,8 +138,9 @@ fn generate_flatten_inner(input: DeriveInput) -> Result<TokenStream> {
         .into_iter()
         .map(|attr| attr.meta)
         .collect::<Vec<_>>();
-    let table_name = extract_table_name(&class_attrs);
-    let default_order = extract_source_order(&class_attrs);
+    check_unfamilliar_attrs(&class_attrs, ALLOWED_FLATTEN_ATTRS)?;
+    let table_name = extract_table_name(&class_attrs)?;
+    let default_order = extract_source_order(&class_attrs)?;
 
     let class_ident = input.ident;
     let class: DataStruct = match input.data {
@@ -143,8 +152,10 @@ fn generate_flatten_inner(input: DeriveInput) -> Result<TokenStream> {
     let mut clap_fields = Punctuated::<ClapInitialization, Token![.]>::new();
 
     for field in class.fields {
+        check_field_attributes(&field)?;
+
         let res = if field_is_flatten(&field) {
-            Ok(process_flatten_field(field))
+            process_flatten_field(field)
         } else if let Some(attr) = field_is_subcommand(&field) {
             Err(Error::new(
                 attr.meta.span(),
@@ -160,3 +171,5 @@ fn generate_flatten_inner(input: DeriveInput) -> Result<TokenStream> {
 
     generate_flatten_implementation(class_ident, clap_fields, fields_json_definition)
 }
+
+// TODO: create test on         default_order(clap, env)
