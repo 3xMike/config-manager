@@ -22,7 +22,7 @@ enum Bar {
 #[config(
     clap(version, author),
     env_prefix = "a",
-    file(format = "json", env = "config", optional = true),
+    file(format = "json", env = "config", optional),
     __debug_cmd_input__("-b=165", "--struct={\"data\": {\"First\": 7}}")
 )]
 struct MethodConfig {

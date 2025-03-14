@@ -165,12 +165,6 @@ fn meta_to_maybe(meta: &Meta) -> MaybeString {
         .unwrap_or(ClapOption::Empty)
 }
 
-fn meta_to_option(meta: &Meta) -> Option<String> {
-    match_literal_or_init_from(meta, AcceptedLiterals::String)
-        .as_ref()
-        .map(InitFrom::as_string)
-}
-
 pub(crate) fn parse_clap_app_attribute(
     attributes: &MetaList,
     docs: Option<String>,

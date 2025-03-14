@@ -36,7 +36,7 @@ pub(crate) fn binary_name() -> TokenStream {
 
 pub(crate) fn path_to_string(path: &Path) -> String {
     path.get_ident()
-        .unwrap_or_else(|| panic!("Path {} is not an ident", path.to_token_stream()))
+        .unwrap_or_else(|| panic!("Inner: path {} is not an ident", path.to_token_stream()))
         .to_token_stream()
         .to_string()
 }

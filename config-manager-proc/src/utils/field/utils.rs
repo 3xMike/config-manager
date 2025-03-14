@@ -320,14 +320,10 @@ pub(super) fn extract_attributes(
                 })
             }
             ENV_KEY => res.variables.push(FieldAttribute::Env(Env {
-                inner: match_literal_or_init_from(&arg, AcceptedLiterals::String)
-                    .as_ref()
-                    .map(InitFrom::as_string),
+                inner: meta_to_option(&arg),
             })),
             CONFIG_KEY => res.variables.push(FieldAttribute::Config(Config {
-                key: match_literal_or_init_from(&arg, AcceptedLiterals::String)
-                    .as_ref()
-                    .map(InitFrom::as_string),
+                key: meta_to_option(&arg),
                 table: table_name.clone(),
             })),
             DESERIALIZER => {
@@ -337,9 +333,7 @@ pub(super) fn extract_attributes(
                         "Deserialize_with can be assigned only once per field"
                     )
                 }
-                res.deserializer = match_literal_or_init_from(&arg, AcceptedLiterals::String)
-                    .as_ref()
-                    .map(InitFrom::as_string);
+                res.deserializer = meta_to_option(&arg); // TODO
             }
             _ => panic_span!(arg.span(), "Unknown source attribute"),
         };

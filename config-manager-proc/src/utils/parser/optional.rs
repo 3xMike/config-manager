@@ -21,50 +21,6 @@ impl InitFrom {
 pub(crate) enum AcceptedLiterals {
     String,
     Char,
-    Bool,
-}
-
-pub(crate) struct OptionalAttribute<T: ToString> {
-    pub(crate) ty: T,
-    pub(crate) value: Option<String>,
-    pub(crate) accepted_literals: AcceptedLiterals,
-}
-
-pub(crate) enum SetOptionalAttrResult {
-    Set,
-    ErrorAlreadySet,
-    NameMismatch,
-}
-
-pub(crate) fn try_set_optional_attribute<T: ToString>(
-    attr: &Meta,
-    opt_atr: &mut OptionalAttribute<T>,
-    default_behaviour: bool,
-) -> SetOptionalAttrResult {
-    if path_to_string(attr.path()) != opt_atr.ty.to_string() {
-        SetOptionalAttrResult::NameMismatch
-    } else {
-        if opt_atr.value.is_some() {
-            return SetOptionalAttrResult::ErrorAlreadySet;
-        }
-        opt_atr.value = Some(
-            match match_literal_or_init_from(attr, opt_atr.accepted_literals) {
-                Some(InitFrom::Fn(value)) => format!("{{{value}}}"),
-                Some(InitFrom::Literal(lit)) => {
-                    if !default_behaviour {
-                        lit.to_token_stream().to_string()
-                    } else {
-                        match lit {
-                            Lit::Str(str) => str.value(),
-                            lit => lit.to_token_stream().to_string(),
-                        }
-                    }
-                }
-                None => panic!("Nested attributes of `file` can't be empty"),
-            },
-        );
-        SetOptionalAttrResult::Set
-    }
 }
 
 pub(crate) fn match_literal_or_init_from(
@@ -82,13 +38,6 @@ pub(crate) fn match_literal_or_init_from(
                     InitFrom::Literal(lit.clone())
                 } else {
                     panic!("expected string, got {:#?}", lit);
-                }
-            }
-            AcceptedLiterals::Bool => {
-                if matches!(lit, Lit::Bool(_)) {
-                    InitFrom::Literal(lit.clone())
-                } else {
-                    panic!("expected bool, got {:#?}", lit);
                 }
             }
             AcceptedLiterals::Char => {
@@ -132,4 +81,10 @@ pub(crate) fn extract_default(meta: &Meta) -> Option<String> {
             Some(format!("{{{}}}", value.to_token_stream()))
         }
     }
+}
+
+pub(crate) fn meta_to_option(meta: &Meta) -> Option<String> {
+    match_literal_or_init_from(meta, AcceptedLiterals::String)
+        .as_ref()
+        .map(InitFrom::as_string)
 }
