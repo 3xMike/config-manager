@@ -128,6 +128,7 @@ impl ClapAppParseResult {
 
     pub(crate) fn normalize(self) -> Result<NormalClapAppInfo> {
         Ok(NormalClapAppInfo {
+            span: self.span,
             long_about: self
                 .long_about
                 .clone()

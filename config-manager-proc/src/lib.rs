@@ -4,8 +4,6 @@
 mod generator;
 mod utils;
 
-use std::str::FromStr;
-
 use proc_macro::TokenStream as TokenStream0;
 use proc_macro2::{Span, TokenStream};
 use quote::{quote, quote_spanned, ToTokens};

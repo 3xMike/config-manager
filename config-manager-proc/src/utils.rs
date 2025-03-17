@@ -9,14 +9,6 @@ pub(crate) mod field;
 pub(crate) mod parser;
 pub(crate) mod top_level;
 
-/// Formated string to TokenStream \
-/// Same as ```TokenStream::from_str(&format!(...)).unwrap()```
-macro_rules! format_to_tokens {
-    ($($arg:tt)*) => {
-        TokenStream::from_str(&std::format!($($arg)*)).unwrap()
-    };
-}
-// TODO: rm this
 // TODO: use quote_spanned everywhere
 
 macro_rules! meta_value_lit {
@@ -45,7 +37,6 @@ macro_rules! panic_span {
     };
 }
 
-pub(crate) use format_to_tokens;
 pub(crate) use meta_value_lit;
 pub(crate) use panic_site;
 pub(crate) use panic_span;

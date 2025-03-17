@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2022 JSRPC “Kryptonite”
 
-use super::{attributes::*, format_to_tokens, meta_value_lit};
+use super::{attributes::*, meta_value_lit};
 use crate::utils::field::utils::{ExtractedAttributes, FieldAttribute};
 use crate::*;
 
@@ -28,8 +28,9 @@ impl AppTopLevelInfo {
     }
 }
 
-#[derive(Default, Clone)]
+#[derive(Clone)]
 pub(crate) struct NormalClapAppInfo {
+    pub(crate) span: Span,
     pub(crate) name: TokenStream,
     pub(crate) version: Option<TokenStream>,
     pub(crate) author: Option<TokenStream>,
@@ -37,26 +38,40 @@ pub(crate) struct NormalClapAppInfo {
     pub(crate) long_about: Option<TokenStream>,
 }
 
+impl Default for NormalClapAppInfo {
+    fn default() -> Self {
+        Self {
+            span: Span::call_site(),
+            name: Default::default(),
+            version: Default::default(),
+            author: Default::default(),
+            about: Default::default(),
+            long_about: Default::default(),
+        }
+    }
+}
+
 impl ToTokens for NormalClapAppInfo {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         tokens.extend({
             let name = &self.name;
-            let name = format_to_tokens!("clap::Command::new({name})");
+            let span = self.span;
+            let name = quote_spanned!(span=> clap::Command::new(#name));
             let version = match &self.version {
                 None => TokenStream::new(),
-                Some(version) => format_to_tokens!(".version({version})"),
+                Some(version) => quote_spanned!(span=> .version(#version)),
             };
             let author = match &self.author {
                 None => TokenStream::new(),
-                Some(author) => format_to_tokens!(".author({author})"),
+                Some(author) => quote_spanned!(span=> .author(#author)),
             };
             let about = match &self.about {
                 None => TokenStream::new(),
-                Some(about) => format_to_tokens!(".about({about})"),
+                Some(about) => quote_spanned!(span=> .about(#about)),
             };
             let long_about = match &self.long_about {
                 None => TokenStream::new(),
-                Some(long_about) => format_to_tokens!(".long_about({long_about})"),
+                Some(long_about) => quote_spanned!(span=> .long_about(#long_about)),
             };
             quote! {
                 #name

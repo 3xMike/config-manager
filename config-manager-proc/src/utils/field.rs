@@ -5,7 +5,7 @@ pub(crate) mod utils;
 
 use std::default::Default;
 
-use super::{attributes::*, format_to_tokens};
+use super::attributes::*;
 use crate::*;
 use utils::*;
 

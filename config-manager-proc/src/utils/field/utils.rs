@@ -29,28 +29,29 @@ impl ToTokens for ClapInitialization {
 impl ToTokens for NormalClapFieldInfo {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         tokens.extend({
-            let long = format_to_tokens!(".long({})", self.long);
-            let name = format_to_tokens!("{}", self.long);
+            let span = self.span;
+            let name = self.long.clone();
+            let long = quote_spanned!(span=> .long(#name));
             let short = match &self.short {
                 None => TokenStream::new(),
-                Some(short) => format_to_tokens!(".short({short})"),
+                Some(short) => quote_spanned!(span=> .short(#short)),
             };
             let flag = if self.flag {
-                format_to_tokens!(".num_args(0..=1).default_missing_value(\"true\")")
+                quote_spanned!(span=> .num_args(0..=1).default_missing_value("true"))
             } else {
-                format_to_tokens!(".num_args(1)")
+                quote_spanned!(span=> .num_args(1))
             };
             let help = match &self.help {
                 None => TokenStream::new(),
-                Some(help) => format_to_tokens!(".help({help})"),
+                Some(help) => quote_spanned!(span=> .help(#help)),
             };
             let long_help = match &self.long_help {
                 None => TokenStream::new(),
-                Some(long_help) => format_to_tokens!(".long_help({long_help})"),
+                Some(long_help) => quote_spanned!(span=> .long_help(#long_help)),
             };
             let help_heading = match &self.help_heading {
                 None => TokenStream::new(),
-                Some(help_heading) => format_to_tokens!(".help_heading({help_heading})"),
+                Some(help_heading) => quote_spanned!(span=> .help_heading(#help_heading)),
             };
             quote_spanned! {self.span=>
                 clap::Arg::new(#name)
@@ -174,29 +175,35 @@ pub(crate) enum FieldAttribute {
 }
 
 impl FieldAttribute {
+    fn span(&self) -> Span {
+        match self {
+            Self::Clap(v) => v.span,
+            Self::Env(v) => v.span,
+            Self::Config(v) => v.span,
+        }
+    }
+
     fn gen_init(&self, field_name: &str) -> TokenStream {
+        let span = self.span();
         match &self {
             Self::Env(env) => {
-                format_to_tokens!(
-                    "env_data.get(&({}) as \
-                     &::std::primitive::str).map(::std::string::ToString::to_string)",
-                    env.prefixed_name(field_name)
-                )
+                let prefixed_name = env.prefixed_name(field_name);
+                quote_spanned! {span=>
+                    env_data.get(&(#prefixed_name) as &::std::primitive::str).map(::std::string::ToString::to_string)
+                }
             }
             Self::Config(cfg) => {
-                format_to_tokens!(
-                    "::config_manager::__private::find_field_in_table(&config_file_data, {}, \
-                     {}.to_string())?",
-                    cfg.table(),
-                    cfg.key(field_name)
-                )
+                let table = cfg.table();
+                let key = cfg.key(field_name);
+                quote_spanned! {span=>
+                    ::config_manager::__private::find_field_in_table(&config_file_data, #table, #key.to_string())?
+                }
             }
             Self::Clap(clap) => {
-                format_to_tokens!(
-                    "clap_data.get_one::<::std::string::String>({}).\
-                     map(::std::string::ToString::to_string)",
-                    clap.normal_long(field_name)
-                )
+                let long = clap.normal_long(field_name);
+                quote_spanned! {span=>
+                    clap_data.get_one::<::std::string::String>(#long).map(::std::string::ToString::to_string)
+                }
             }
         }
     }
@@ -213,23 +220,34 @@ impl Display for FieldAttribute {
     }
 }
 
-#[derive(Default, Clone)]
+#[derive(Clone)]
 pub(crate) struct Env {
     pub(super) inner: Option<TokenStream>,
+    pub(super) span: Span,
+}
+
+impl std::default::Default for Env {
+    fn default() -> Self {
+        Self {
+            inner: None,
+            span: Span::call_site(),
+        }
+    }
 }
 
 impl Env {
-    fn prefixed_name(&self, field_name: &str) -> String {
+    fn prefixed_name(&self, field_name: &str) -> TokenStream {
+        let span = self.span;
         let env_attribute = match &self.inner {
             None => quote!(::std::option::Option::<&::std::primitive::str>::None),
             Some(value) => {
-                format_to_tokens!("::std::option::Option::<&::std::primitive::str>::Some({value})")
+                quote_spanned!(span=> ::std::option::Option::<&::std::primitive::str>::Some(#value))
             }
         };
         let binary_name = binary_name();
-        let field_name_lowercase = field_name.to_lowercase();
+        let field_name_lowercase = str_to_tokens(field_name.to_lowercase(), span);
 
-        quote! {
+        quote_spanned! {span=>
             {
                 let env_prefix = env_prefix.clone();
                 match (#env_attribute, env_prefix) {
@@ -247,7 +265,6 @@ impl Env {
                 }.to_lowercase()
             }
         }
-        .to_string()
     }
 }
 
@@ -337,6 +354,7 @@ pub(super) fn extract_attributes(
             }
             ENV_KEY => res.variables.push(FieldAttribute::Env(Env {
                 inner: meta_to_option(&arg)?,
+                span: arg.span(),
             })),
             CONFIG_KEY => res.variables.push(FieldAttribute::Config(Config {
                 span: arg.span(),
