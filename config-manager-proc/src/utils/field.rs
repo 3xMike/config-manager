@@ -5,7 +5,7 @@ pub(crate) mod utils;
 
 use std::default::Default;
 
-use super::{attributes::*, format_to_tokens};
+use super::attributes::*;
 use crate::*;
 use utils::*;
 
@@ -19,12 +19,14 @@ pub(crate) enum ClapInitialization {
 
 #[derive(Clone)]
 pub(crate) struct NormalClapFieldInfo {
-    pub(crate) long: String,
-    pub(crate) short: Option<String>,
-    pub(crate) help: Option<String>,
-    pub(crate) long_help: Option<String>,
+    pub(crate) span: Span,
+
+    pub(crate) long: TokenStream,
+    pub(crate) short: Option<TokenStream>,
+    pub(crate) help: Option<TokenStream>,
+    pub(crate) long_help: Option<TokenStream>,
     pub(crate) flag: bool,
-    pub(crate) help_heading: Option<String>,
+    pub(crate) help_heading: Option<TokenStream>,
 }
 
 pub(crate) struct ProcessFieldResult {
@@ -35,99 +37,82 @@ pub(crate) struct ProcessFieldResult {
 
 pub(crate) fn process_field(
     field: Field,
-    table_name: &Option<String>,
+    table_name: &Option<TokenStream>,
     default_order: &Option<ExtractedAttributes>,
-) -> ProcessFieldResult {
-    let field_name = field.ident.clone().expect("Unnamed fields are forbidden");
-    if number_of_crate_attribute(&field) > 1 {
-        panic!(
-            "Error: source attribute must be the only attribute of the field (field's name: \
-             \"{}\")",
-            &field_name
-        );
-    }
+) -> Result<ProcessFieldResult> {
+    let field_name = field.ident.clone().unwrap();
 
-    let attributes_order = extract_attributes(field, table_name)
+    let attributes_order = extract_attributes(&field, table_name)?
         .or_else(|| default_order.clone())
         .unwrap_or_else(|| ExtractedAttributes {
             variables: vec![
-                FieldAttribute::Clap(Default::default()),
+                FieldAttribute::Clap(ClapFieldParseResult::new(field_name.span())),
                 FieldAttribute::Env(Default::default()),
                 FieldAttribute::Config(Default::default()),
             ],
             ..Default::default()
         });
 
-    ProcessFieldResult {
-        initialization: attributes_order.gen_init(&field_name.to_string()),
-        clap_field: match attributes_order.clap_field(&field_name.to_string()) {
+    Ok(ProcessFieldResult {
+        initialization: attributes_order.gen_init(&field),
+        clap_field: match attributes_order.clap_field(&field_name.to_string())? {
             Some(init) => ClapInitialization::Normal(init),
             None => ClapInitialization::None,
         },
         name: field_name,
-    }
+    })
 }
 
 pub(crate) fn field_is_flatten(field: &Field) -> bool {
     field.attrs.iter().any(|attr| attr.path().is_ident(FLATTEN))
 }
 
-pub(crate) fn process_flatten_field(field: Field) -> ProcessFieldResult {
-    let name = field.ident.clone().expect("Unnamed fields are forbidden");
-    if number_of_crate_attribute(&field) != 1 {
-        panic!(
-            "Error: flatten attribute must be the only attribute of the field (field's name: \
-             \"{}\")",
-            &name
-        );
-    }
+pub(crate) fn process_flatten_field(field: Field) -> Result<ProcessFieldResult> {
+    let span = field.span();
+    let name = field.ident.clone().unwrap();
     let ty = field.ty;
 
-    ProcessFieldResult {
+    Ok(ProcessFieldResult {
         name,
         clap_field: ClapInitialization::Flatten(ty.clone()),
-        initialization: quote! {
-            <#ty as ::config_manager::__private::Flatten>::parse(&env_data, &config_file_data ,&clap_data, env_prefix.clone())?
+        initialization: quote_spanned! {span=>
+            <#ty as ::config_manager::__private::Flatten>::parse(env_data, config_file_data, clap_data, env_prefix.clone())?
         },
-    }
+    })
 }
 
-pub(crate) fn field_is_subcommand(field: &Field) -> bool {
+pub(crate) fn field_is_subcommand(field: &Field) -> Option<&Attribute> {
     field
         .attrs
         .iter()
-        .any(|attr| attr.path().is_ident(SUBCOMMAND))
+        .find(|attr| attr.path().is_ident(SUBCOMMAND))
 }
 
 pub(crate) fn process_subcommand_field(
     field: Field,
     dbg_cmd: &Option<TokenStream>,
-) -> ProcessFieldResult {
-    let name = field.ident.clone().expect("Unnamed fields are forbidden");
-    if number_of_crate_attribute(&field) != 1 {
-        panic!(
-            "Error: subcommand attribute must be the only attribute of the field (field's name: \
-             \"{}\")",
-            &name
-        );
-    }
+) -> Result<ProcessFieldResult> {
+    let span = field.span();
+    let name = field.ident.clone().unwrap();
     let string_name = name.to_string();
     let ty = field.ty;
 
     let args = match dbg_cmd {
-        None => quote!(::std::env::args()),
-        Some(args) => quote! {
+        None => quote_spanned!(span=> ::std::env::args()),
+        Some(args) => quote_spanned! {span=>
             ::std::vec!["", #args].into_iter().map(|s| s.to_string())
         },
     };
     let (initialization, ty) = if let Some(nested_ty) = is_type_an_optional(&ty) {
         (
-            quote! (::config_manager::__private::parse_subcommand::<#nested_ty>(#args, clap_data)?),
+            quote_spanned! {span=>
+                ::config_manager::__private::parse_subcommand::<#nested_ty>(#args, clap_data)?
+            },
             nested_ty,
         )
     } else {
         (
-            quote! {
+            quote_spanned! {span=>
                 ::config_manager::__private::parse_subcommand::<#ty>(#args, clap_data)?
                     .ok_or_else(|| ::config_manager::Error::MissingArgument(
                         ::std::format!("Missing subcommand for non-optional field \"{}\"", #string_name)
@@ -137,19 +122,29 @@ pub(crate) fn process_subcommand_field(
         )
     };
 
-    ProcessFieldResult {
+    Ok(ProcessFieldResult {
         name,
         clap_field: ClapInitialization::Subcommand(ty),
         initialization,
-    }
+    })
 }
 
-fn number_of_crate_attribute(field: &Field) -> usize {
-    field
+pub(crate) fn check_field_attributes(field: &Field) -> Result<()> {
+    let applied_crate_attrs = field
         .attrs
         .iter()
-        .filter(|attr| {
-            [SOURCE_KEY, FLATTEN, SUBCOMMAND].contains(&path_to_string(attr.path()).as_str())
+        .filter_map(|attr| {
+            [SOURCE_KEY, FLATTEN, SUBCOMMAND]
+                .into_iter()
+                .find(|crate_attr| crate_attr == &path_to_string(attr.path()))
         })
-        .count()
+        .collect::<Vec<_>>();
+
+    if applied_crate_attrs.len() > 1 {
+        let message =
+            format!("Can't use {applied_crate_attrs:?} at the same time. Use only one of them");
+        Err(Error::new(field.ident.clone().unwrap().span(), message))
+    } else {
+        Ok(())
+    }
 }

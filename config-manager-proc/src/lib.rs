@@ -4,15 +4,25 @@
 mod generator;
 mod utils;
 
-use std::{fmt::Write, str::FromStr};
-
 use proc_macro::TokenStream as TokenStream0;
-use proc_macro2::TokenStream;
-use quote::{quote, ToTokens};
-use syn::{parse::Parser, punctuated::Punctuated, *};
+use proc_macro2::{Span, TokenStream};
+use quote::{quote, quote_spanned, ToTokens};
+use syn::{parse::Parser, punctuated::Punctuated, spanned::Spanned, *};
 
 use generator::*;
-use utils::{config::*, field::*, parser::*, top_level::*};
+use utils::{
+    attributes::{extract_docs, ALLOWED_FLATTEN_ATTRS},
+    config::*,
+    field::*,
+    panic_site, panic_span,
+    parser::*,
+    str_to_tokens,
+    top_level::*,
+    PanicOnNone,
+};
+
+pub(crate) use syn::Error;
+pub(crate) type Result<T> = std::result::Result<T, Error>;
 
 /// Macro generating an implementation of the `ConfigInit` trait
 /// or constructing global variable. \
@@ -21,14 +31,24 @@ use utils::{config::*, field::*, parser::*, top_level::*};
 #[proc_macro_attribute]
 pub fn config(attrs: TokenStream0, input: TokenStream0) -> TokenStream0 {
     let parser = Punctuated::<Meta, Token![,]>::parse_terminated;
-    let attrs = parser.parse(attrs).unwrap();
-    let mut annotations = String::from("#[derive(::config_manager::__private::__Config__)]");
-    attrs.iter().for_each(|attr| {
-        std::write!(&mut annotations, "\n{}", (quote! { #[#attr]})).unwrap();
-    });
-    let mut annotations =
-        TokenStream0::from_str(&annotations).expect("can't parse annotations as tokenstream");
-    annotations.extend(input);
+    let attrs = match parser.parse(attrs) {
+        Ok(attrs) => attrs,
+        Err(err) => return err.into_compile_error().into(),
+    }
+    .into_iter()
+    .collect::<Vec<_>>();
+
+    let mut annotations: TokenStream0 =
+        quote!(#[derive(::config_manager::__private::__Config__)]).into();
+    annotations.extend(input.clone());
+
+    let input = parse_macro_input!(input as DeriveInput);
+
+    let new_code: TokenStream0 = match generate_config_inner(input, &attrs) {
+        Ok(res) => res.into(),
+        Err(err) => return err.into_compile_error().into(),
+    };
+    annotations.extend(new_code);
     annotations
 }
 
@@ -48,10 +68,13 @@ pub fn config(attrs: TokenStream0, input: TokenStream0) -> TokenStream0 {
         __debug_cmd_input__
     )
 )]
-pub fn generate_config(input: TokenStream0) -> TokenStream0 {
-    let input = parse_macro_input!(input as DeriveInput);
+pub fn generate_config(_input: TokenStream0) -> TokenStream0 {
+    TokenStream0::new()
+}
 
+fn generate_config_inner(input: DeriveInput, crate_attrs: &[Meta]) -> Result<TokenStream> {
     let class_ident = input.ident;
+    let docs = extract_docs(&input.attrs);
 
     let AppTopLevelInfo {
         env_prefix,
@@ -60,35 +83,30 @@ pub fn generate_config(input: TokenStream0) -> TokenStream0 {
         debug_cmd_input,
         table_name,
         default_order,
-    } = AppTopLevelInfo::extract(&input.attrs);
+    } = AppTopLevelInfo::extract(crate_attrs, docs)?;
 
     let class: DataStruct = match input.data {
         Data::Struct(s) => s,
-        _ => panic!("config macro input should be a Struct"),
+        _ => panic_site!("config macro input should be a Struct"),
     };
 
-    unzip_n::unzip_n!(2);
-    let (fields_json_definition, clap_fields): (
-        Vec<(proc_macro2::Ident, TokenStream)>,
-        Vec<ClapInitialization>,
-    ) = class
-        .fields
-        .into_iter()
-        .map(|field| {
-            let ProcessFieldResult {
-                name,
-                clap_field,
-                initialization,
-            } = if field_is_flatten(&field) {
-                process_flatten_field(field)
-            } else if field_is_subcommand(&field) {
-                process_subcommand_field(field, &debug_cmd_input)
-            } else {
-                process_field(field, &table_name, &default_order)
-            };
-            ((name, initialization), clap_field)
-        })
-        .unzip_n();
+    let mut fields_json_definition = Vec::new();
+    let mut clap_fields = Vec::new();
+
+    for field in class.fields {
+        check_field_attributes(&field)?;
+
+        let res = if field_is_flatten(&field) {
+            process_flatten_field(field)?
+        } else if field_is_subcommand(&field).is_some() {
+            process_subcommand_field(field, &debug_cmd_input)?
+        } else {
+            process_field(field, &table_name, &default_order)?
+        };
+
+        fields_json_definition.push((res.name, res.initialization));
+        clap_fields.push(res.clap_field);
+    }
 
     generate_final_struct_and_supporting_code(InitializationInfo {
         env_prefix,
@@ -99,7 +117,6 @@ pub fn generate_config(input: TokenStream0) -> TokenStream0 {
         fields_json_definition,
         debug_cmd_input,
     })
-    .into()
 }
 
 /// Annotated with this macro structure can be used
@@ -108,37 +125,48 @@ pub fn generate_config(input: TokenStream0) -> TokenStream0 {
 pub fn generate_flatten(input: TokenStream0) -> TokenStream0 {
     let input = parse_macro_input!(input as DeriveInput);
 
-    let table_name = extract_table_name(&input.attrs);
-    let default_order = extract_source_order(&input.attrs);
+    match generate_flatten_inner(input) {
+        Ok(res) => res.into(),
+        Err(err) => err.into_compile_error().into(),
+    }
+}
+
+fn generate_flatten_inner(input: DeriveInput) -> Result<TokenStream> {
+    let class_attrs = input
+        .attrs
+        .into_iter()
+        .map(|attr| attr.meta)
+        .collect::<Vec<_>>();
+    check_unfamilliar_attrs(&class_attrs, ALLOWED_FLATTEN_ATTRS)?;
+    let table_name = extract_table_name(&class_attrs)?;
+    let default_order = extract_source_order(&class_attrs)?;
 
     let class_ident = input.ident;
     let class: DataStruct = match input.data {
         Data::Struct(s) => s,
-        _ => panic!("config macro input should be a Struct"),
+        _ => panic_site!("config macro input should be a Struct"),
     };
 
-    unzip_n::unzip_n!(2);
-    let (fields_json_definition, clap_fields): (
-        Vec<(proc_macro2::Ident, TokenStream)>,
-        Punctuated<ClapInitialization, Token![.]>,
-    ) = class
-        .fields
-        .into_iter()
-        .map(|field| {
-            let ProcessFieldResult {
-                name,
-                clap_field,
-                initialization,
-            } = if field_is_flatten(&field) {
-                process_flatten_field(field)
-            } else if field_is_subcommand(&field) {
-                panic!("subcommands are forbidden in the nested structures")
-            } else {
-                process_field(field, &table_name, &default_order)
-            };
-            ((name, initialization), clap_field)
-        })
-        .unzip_n();
+    let mut fields_json_definition = Vec::new();
+    let mut clap_fields = Punctuated::<ClapInitialization, Token![.]>::new();
 
-    generate_flatten_implementation(class_ident, clap_fields, fields_json_definition).into()
+    for field in class.fields {
+        check_field_attributes(&field)?;
+
+        let res = if field_is_flatten(&field) {
+            process_flatten_field(field)
+        } else if let Some(attr) = field_is_subcommand(&field) {
+            Err(Error::new(
+                attr.meta.span(),
+                "subcommands are forbidden in the nested structures",
+            ))
+        } else {
+            process_field(field, &table_name, &default_order)
+        }?;
+
+        fields_json_definition.push((res.name, res.initialization));
+        clap_fields.push(res.clap_field);
+    }
+
+    generate_flatten_implementation(class_ident, clap_fields, fields_json_definition)
 }

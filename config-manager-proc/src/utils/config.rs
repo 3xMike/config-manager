@@ -3,144 +3,137 @@
 
 use std::collections::HashSet;
 
-use strum::IntoEnumIterator;
-
 use super::attributes::*;
 use crate::*;
 
-fn str_to_config_format_repr(s: &str) -> String {
+fn str_to_config_format_repr<S: AsRef<str>>(s: S, span: Span) -> Result<TokenStream> {
+    let s = s.as_ref().trim_matches('"');
     match s {
         "json" | "json5" | "toml" | "yaml" | "ron" => {
-            let capitalize_first = |s: &str| -> String {
-                let mut chars = s.chars();
-                let first_char = chars.next().unwrap();
-                first_char.to_uppercase().to_string() + &chars.collect::<String>()
-            };
+            let mut chars = s.chars();
+            let first_char = chars.next().unwrap();
+            let accepted_format =
+                first_char.to_uppercase().to_string() + &chars.collect::<String>();
+            let accepted_format = Ident::new(&accepted_format, span);
 
-            let accepted_format = capitalize_first(s);
-            let pref = "::config_manager::__private::config::FileFormat::".to_string();
-            pref + &accepted_format
+            Ok(
+                quote_spanned!(span=> ::config_manager::__private::config::FileFormat::#accepted_format),
+            )
         }
-        _ => panic!("{s} format is not supported"),
+        _ => panic_span!(span, "{s} format is not supported"),
     }
 }
 
 struct ParsedConfigFileAttributes {
-    file_format: String,
+    span: Span,
+    file_format: TokenStream,
     clap_info: Option<NormalClapFieldInfo>,
-    env_key: Option<String>,
+    env_key: Option<TokenStream>,
     optional: bool,
-    default: Option<String>,
+    default: Option<TokenStream>,
 }
 
-fn handle_file_attributes(
-    class_attributes: &[Attribute],
-) -> impl Iterator<Item = ParsedConfigFileAttributes> + '_ {
+fn handle_file_attributes(class_attributes: &[Meta]) -> Result<Vec<ParsedConfigFileAttributes>> {
     class_attributes
         .iter()
-        .filter(|a| a.path().is_ident(CONFIG_FILE_KEY))
+        .filter(|m| m.path().is_ident(CONFIG_FILE_KEY))
         .map(handle_file_attribute)
+        .collect()
 }
 
-fn handle_file_attribute(attr: &Attribute) -> ParsedConfigFileAttributes {
+fn handle_file_attribute(attr: &Meta) -> Result<ParsedConfigFileAttributes> {
     let nested = attr
-        .parse_args_with(Punctuated::<Meta, Token![,]>::parse_terminated)
-        .expect(
-            "config arguments must match file(format = \"...\", clap_key = \
-                             \"...\", env = \"...\", default = \"...\", optional = \
-                             true/[false])",
-        );
+        .require_list()
+        .map_err(|_| Error::new(attr.span(), "file attribute must match \"file(...)\""))?
+        .parse_args_with(Punctuated::<Meta, Token![,]>::parse_terminated)?;
 
     let mut clap_info = None;
-    let mut config_file_attributes: Vec<_> = ConfigFileAttr::iter()
-        .map(|ty| OptionalAttribute {
-            value: None,
-            accepted_literals: match ty {
-                ConfigFileAttr::Optional => AcceptedLiterals::Bool,
-                _ => AcceptedLiterals::String,
-            },
-            ty,
-        })
-        .collect();
-
-    'next_arg: for arg in nested {
-        if path_to_string(arg.path()) == CLAP_KEY {
-            let clap_list = arg
-                .require_list()
-                .expect("clap attribute must match \"clap(...)\"");
-
-            clap_info = Some(parse_clap_field_attribute(clap_list, false));
-            continue 'next_arg;
-        } else {
-            for attr in &mut config_file_attributes {
-                match try_set_optional_attribute::<ConfigFileAttr>(&arg, attr, false) {
-                    SetOptionalAttrResult::NameMismatch => (),
-                    SetOptionalAttrResult::Set => continue 'next_arg,
-                    SetOptionalAttrResult::ErrorAlreadySet => {
-                        panic!("attempted to set {} twice", attr.ty)
-                    }
-                }
-            }
-            panic!("unknown attribute: {:#?}", arg)
-        }
-    }
-
     let mut file_format = None;
     let mut env_key = None;
     let mut optional = false;
     let mut default = None;
 
-    for attr in config_file_attributes {
-        match attr.ty {
-            ConfigFileAttr::EnvKey => env_key = attr.value,
-            ConfigFileAttr::Optional => {
-                if let Some(attr) = attr.value {
-                    optional = attr.parse().unwrap()
+    for arg in nested {
+        match path_to_string(arg.path()).as_str() {
+            "clap" => {
+                if clap_info.is_some() {
+                    panic_span!(arg.span(), "attempted to set clap twice")
                 }
-            }
-            ConfigFileAttr::Default => {
-                if let Some(attr) = attr.value {
-                    default = Some(attr)
-                }
-            }
-            ConfigFileAttr::Format => {
-                if let Some(format_attr) = attr.value {
-                    assert_eq!(format_attr.chars().next().unwrap(), '"');
-                    assert_eq!(format_attr.chars().last().unwrap(), '"');
+                let clap_list = arg.require_list().map_err(|_err| {
+                    Error::new(arg.span(), "clap attribute must match \"clap(...)\"")
+                })?;
 
-                    let drop_fst_and_lst: String = format_attr
-                        .chars()
-                        .skip(1)
-                        .take(format_attr.len() - 2)
-                        .collect();
-                    file_format = Some(str_to_config_format_repr(&drop_fst_and_lst))
-                }
+                clap_info = Some(parse_clap_field_attribute(clap_list, false)?);
             }
+            "format" => {
+                let file_attr = set_config_attr(file_format.is_some(), &arg, "format")?.unwrap();
+                file_format = Some(str_to_config_format_repr(
+                    file_attr.to_string(),
+                    arg.span(),
+                )?);
+            }
+            "env" => env_key = set_config_attr(env_key.is_some(), &arg, "env")?,
+            "optional" => {
+                if optional {
+                    panic_span!(arg.span(), "attempted to set optional twice")
+                }
+                if !matches!(arg, Meta::Path(_)) {
+                    panic_span!(
+                        arg.span(),
+                        "optional cannot take values. Usage: file(optional)"
+                    )
+                }
+                optional = true;
+            }
+            "default" => default = set_config_attr(default.is_some(), &arg, "default")?,
+            other => panic_span!(arg.span(), "unknown attribute {other}"),
         }
     }
 
     if clap_info.is_none() && env_key.is_none() && default.is_none() {
-        panic!("you must specify at least one of (clap, env, default)");
+        panic_span!(
+            attr.span(),
+            "you must specify at least one of (clap, env, default)"
+        );
     }
     if let Some(clap_info) = &clap_info {
         if let ClapOption::None | ClapOption::Empty = clap_info.long {
-            panic!(
-                "if #[clap] attribute is specified for configuration file, nested \
-                             `long = ...` must be provided"
+            panic_span!(
+                clap_info.span,
+                "if #[clap] attribute is specified for configuration file, nested `long = ...` \
+                    must be provided. Otherwise it's impossible to determine arg name"
             );
         }
     }
 
-    let clap_info = clap_info.map(|info| info.normalize(Default::default()));
+    let clap_info = clap_info
+        .map(|info| info.normalize(Default::default()))
+        .transpose()?;
 
-    ParsedConfigFileAttributes {
+    Ok(ParsedConfigFileAttributes {
+        span: attr.span(),
         default,
         optional,
         clap_info,
         env_key,
         file_format: file_format
-            .unwrap_or_else(|| panic!("`format` attribute of config file must be set")),
+            .err_on_none(attr.span(), "`format` attribute of config file must be set")?,
+    })
+}
+
+fn set_config_attr<N: AsRef<str>>(
+    already_set: bool,
+    arg: &Meta,
+    attr_name: N,
+) -> Result<Option<TokenStream>> {
+    let attr_name = attr_name.as_ref();
+    if already_set {
+        panic_span!(arg.span(), "attempted to set {attr_name} twice")
     }
+    Ok(Some(meta_to_option(arg)?.err_on_none(
+        arg.span(),
+        format!("file({attr_name}) can't be empty"),
+    )?))
 }
 
 pub(crate) struct ConfigFilesInfo {
@@ -149,6 +142,7 @@ pub(crate) struct ConfigFilesInfo {
 }
 
 pub(crate) struct ConfigFileInfo {
+    pub(crate) span: Span,
     pub(crate) file_format: TokenStream,
     pub(crate) clap_long: TokenStream,
     pub(crate) env_key: TokenStream,
@@ -156,62 +150,63 @@ pub(crate) struct ConfigFileInfo {
     pub(crate) default_path: TokenStream,
 }
 
-pub(crate) fn extract_configs_info(class_attributes: &[Attribute]) -> ConfigFilesInfo {
+pub(crate) fn extract_configs_info(class_attributes: &[Meta]) -> Result<ConfigFilesInfo> {
     let mut configs_attributes = Vec::<ConfigFileInfo>::new();
     let mut configs_as_clap_args = Punctuated::new();
     let mut config_clap_keys = HashSet::<String>::new();
     let mut config_env_keys = HashSet::<String>::new();
 
     for ParsedConfigFileAttributes {
+        span,
         file_format,
         clap_info,
         env_key,
         optional,
         default,
-    } in handle_file_attributes(class_attributes)
+    } in handle_file_attributes(class_attributes)?
     {
         if optional && default.is_some() {
-            panic!(
-                concat!(
-                    "setting optional to true while specifying the default path is pointless, ",
-                    "since the config file will always be tried to parse [default = {}]"
-                ),
-                default.unwrap()
+            panic_span!(
+                span,
+                "setting optional to true while specifying the default path is pointless, \
+                    since the config file will always be tried to parse"
             );
         }
 
         let clap_long = if let Some(clap_info) = &clap_info {
             let clap_long = clap_info.long.clone();
-            let is_new = config_clap_keys.insert(clap_long.clone());
+            let is_new = config_clap_keys.insert(clap_long.to_string());
             if !is_new {
-                panic!("config file with clap key {clap_long} already specified");
+                panic_span!(
+                    span,
+                    "config file with clap key {clap_long} already specified"
+                );
             }
-            TokenStream::from_str(&format!("::std::option::Option::Some({clap_long})"))
+
+            quote_spanned!(span=> ::std::option::Option::Some(#clap_long))
         } else {
-            TokenStream::from_str("::std::option::Option::<&::std::primitive::str>::None")
-        }
-        .unwrap();
+            quote_spanned!(span=> ::std::option::Option::<&::std::primitive::str>::None)
+        };
 
         let env_key = if let Some(env_key) = env_key {
-            let is_new = config_env_keys.insert(env_key.clone());
+            let is_new = config_env_keys.insert(env_key.to_string());
             if !is_new {
-                panic!("config file with env key {env_key} already specified");
+                panic_span!(span, "config file with env key {env_key} already specified");
             }
-            TokenStream::from_str(&format!("::std::option::Option::Some({env_key})"))
+
+            quote_spanned!(span=> ::std::option::Option::Some(#env_key))
         } else {
-            TokenStream::from_str("::std::option::Option::<&::std::primitive::str>::None")
-        }
-        .unwrap();
+            quote_spanned!(span=> ::std::option::Option::<&::std::primitive::str>::None)
+        };
 
         let default_path = if let Some(default) = default {
-            TokenStream::from_str(&format!("::std::option::Option::Some({default})"))
+            quote_spanned!(span=> ::std::option::Option::Some(#default))
         } else {
-            TokenStream::from_str("::std::option::Option::None")
-        }
-        .unwrap();
+            quote_spanned!(span=> ::std::option::Option::None)
+        };
 
-        let file_format = TokenStream::from_str(&file_format).unwrap();
         configs_attributes.push(ConfigFileInfo {
+            span,
             file_format,
             clap_long,
             env_key,
@@ -224,8 +219,8 @@ pub(crate) fn extract_configs_info(class_attributes: &[Attribute]) -> ConfigFile
         }
     }
 
-    ConfigFilesInfo {
+    Ok(ConfigFilesInfo {
         configs_attributes,
         configs_as_clap_args,
-    }
+    })
 }

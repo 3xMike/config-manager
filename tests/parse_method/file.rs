@@ -93,7 +93,7 @@ fn optional() {
     assert!(NotFound::parse().is_err());
 
     #[config(
-        file(format = "json", env = "config_1", optional = true),
+        file(format = "json", env = "config_1", optional),
         __debug_cmd_input__()
     )]
     struct Optional {}

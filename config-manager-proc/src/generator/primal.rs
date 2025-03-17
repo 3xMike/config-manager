@@ -7,19 +7,22 @@ pub(super) fn gen_clap_app(
     clap_app_info: NormalClapAppInfo,
     configs_as_clap_args: Punctuated<ClapInitialization, Token![.]>,
     mut clap_fields: Vec<ClapInitialization>,
-) -> TokenStream {
+) -> Result<TokenStream> {
     let subcommand = if let Some(pos) = clap_fields
         .iter()
         .position(|init| matches!(init, ClapInitialization::Subcommand(_)))
     {
         let sub = clap_fields.remove(pos);
-        if clap_fields
+        match clap_fields
             .iter()
-            .any(|init| matches!(init, ClapInitialization::Subcommand(_)))
+            .find(|init| matches!(init, ClapInitialization::Subcommand(_)))
         {
-            panic!("Structure can contain only one subcommand field");
+            Some(second_sub) => panic_span!(
+                second_sub.span(),
+                "Structure can contain only one subcommand field"
+            ),
+            None => sub.to_token_stream(),
         }
-        sub.to_token_stream()
     } else {
         quote!(app)
     };
@@ -44,7 +47,7 @@ pub(super) fn gen_clap_app(
     } else {
         quote!(.#configs_as_clap_args)
     };
-    quote! {
+    Ok(quote! {
         {
             use ::config_manager::__private::clap;
             let app = #clap_app_info
@@ -52,7 +55,7 @@ pub(super) fn gen_clap_app(
                 #fields;
             #subcommand
         }
-    }
+    })
 }
 
 pub(super) fn gen_clap_matches(debug_cmd_input: Option<TokenStream>) -> TokenStream {
@@ -118,6 +121,7 @@ pub(super) fn gen_config_file_data(config_keys: Vec<ConfigFileInfo>) -> TokenStr
 
     let mut config_paths_init = TokenStream::new();
     for ConfigFileInfo {
+        span,
         file_format,
         env_key,
         clap_long,
@@ -125,7 +129,7 @@ pub(super) fn gen_config_file_data(config_keys: Vec<ConfigFileInfo>) -> TokenStr
         default_path,
     } in config_keys
     {
-        config_paths_init.extend(quote! {
+        config_paths_init.extend(quote_spanned! {span=>
             if let ::std::result::Result::Err(err) = (|| {
                 let mut err_msg = ::std::vec![];
 
@@ -280,16 +284,15 @@ pub(super) fn struct_initialization(
         let clap_app = #clap_app;
         #sources
 
-        let clap_data = match clap_data {
+        let clap_data = &match clap_data {
             ::std::option::Option::Some(data) => data,
             ::std::option::Option::None => #clap_data?,
         };
-        let clap_data = &clap_data;
-        let env_data = match env_data {
+        let env_data = &match env_data {
             ::std::option::Option::Some(data) => data,
             ::std::option::Option::None => #env_data?
         };
-        let config_file_data = match config_file_data {
+        let config_file_data = &match config_file_data {
             ::std::option::Option::Some(data) => data,
             ::std::option::Option::None => #config_file_data?
         };
@@ -303,7 +306,7 @@ pub(super) fn struct_initialization(
         fields_json_definition
             .iter()
             .fold(TokenStream::new(), |mut acc, (name, definition)| {
-                acc.extend(quote! {
+                acc.extend(quote_spanned! {name.span()=>
                     #name: #definition,
                 });
                 acc

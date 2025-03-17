@@ -10,12 +10,18 @@ impl ToTokens for ClapInitialization {
         tokens.extend(match self {
             Self::None => unreachable!(),
             Self::Flatten(tp) => {
-                quote!(args(<#tp as ::config_manager::__private::Flatten>::get_args()))
+                quote_spanned! {tp.span()=>
+                    args(<#tp as ::config_manager::__private::Flatten>::get_args())
+                }
             }
             Self::Subcommand(tp) => {
-                quote!(<#tp as ::config_manager::__private::clap::Subcommand>::augment_subcommands(app))
+                quote_spanned! {tp.span()=>
+                    <#tp as ::config_manager::__private::clap::Subcommand>::augment_subcommands(app)
+                }
             }
-            Self::Normal(info) => quote!(arg(#info)),
+            Self::Normal(info) => quote_spanned! {info.span()=>
+                 arg(#info)
+            },
         })
     }
 }
@@ -23,30 +29,31 @@ impl ToTokens for ClapInitialization {
 impl ToTokens for NormalClapFieldInfo {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         tokens.extend({
-            let long = format_to_tokens!(".long({})", self.long);
-            let name = format_to_tokens!("{}", self.long);
+            let span = self.span;
+            let name = self.long.clone();
+            let long = quote_spanned!(span=> .long(#name));
             let short = match &self.short {
                 None => TokenStream::new(),
-                Some(short) => format_to_tokens!(".short({short})"),
+                Some(short) => quote_spanned!(span=> .short(#short)),
             };
             let flag = if self.flag {
-                format_to_tokens!(".num_args(0..=1).default_missing_value(\"true\")")
+                quote_spanned!(span=> .num_args(0..=1).default_missing_value("true"))
             } else {
-                format_to_tokens!(".num_args(1)")
+                quote_spanned!(span=> .num_args(1))
             };
             let help = match &self.help {
                 None => TokenStream::new(),
-                Some(help) => format_to_tokens!(".help({help})"),
+                Some(help) => quote_spanned!(span=> .help(#help)),
             };
             let long_help = match &self.long_help {
                 None => TokenStream::new(),
-                Some(long_help) => format_to_tokens!(".long_help({long_help})"),
+                Some(long_help) => quote_spanned!(span=> .long_help(#long_help)),
             };
             let help_heading = match &self.help_heading {
                 None => TokenStream::new(),
-                Some(help_heading) => format_to_tokens!(".help_heading({help_heading})"),
+                Some(help_heading) => quote_spanned!(span=> .help_heading(#help_heading)),
             };
-            quote! {
+            quote_spanned! {self.span=>
                 clap::Arg::new(#name)
                 #long
                 #short
@@ -60,17 +67,30 @@ impl ToTokens for NormalClapFieldInfo {
     }
 }
 
-#[derive(Default, Clone)]
+#[derive(Clone)]
 pub(crate) struct ExtractedAttributes {
+    pub(crate) span: Span,
     pub(crate) variables: Vec<FieldAttribute>,
     pub(crate) default: Option<Default>,
-    pub(crate) deserializer: Option<String>,
+    pub(crate) deserializer: Option<(TokenStream, Span)>,
+}
+
+impl std::default::Default for ExtractedAttributes {
+    fn default() -> Self {
+        Self {
+            span: Span::call_site(),
+            variables: vec![],
+            default: None,
+            deserializer: None,
+        }
+    }
 }
 
 impl ExtractedAttributes {
     fn deserializer(&self) -> TokenStream {
+        let span = self.span;
         match &self.deserializer {
-            None => quote! {
+            None => quote_spanned! {span=>
                 let value = if value.is_empty() {
                     "\"\"".to_string()
                 } else {
@@ -78,14 +98,15 @@ impl ExtractedAttributes {
                 };
                 ::config_manager::__private::deser_hjson::from_str(&value)
             },
-            Some(deser_fn) => {
-                let deser_fn = deser_fn.trim_matches('\"');
-                format_to_tokens!("({deser_fn})(&value)")
+            Some((deser_fn, span)) => {
+                let ident = Ident::new(deser_fn.to_string().trim_matches('\"'), *span);
+                quote_spanned! {*span=> (#ident)(&value) }
             }
         }
     }
 
     fn gen_err(&self, field_name: &str) -> TokenStream {
+        let span = self.span;
         let err = format!(
             "field {field_name} not found nor in {} nor as a default",
             self.variables
@@ -95,50 +116,53 @@ impl ExtractedAttributes {
                 .as_slice()
                 .join(", ")
         );
-        quote! {
+        quote_spanned! {span=>
             ::config_manager::Error::MissingArgument(#err.to_string())
         }
     }
 
     fn gen_rest_init(&self, field_name: &str) -> TokenStream {
+        let default_span = self.span;
         self.variables.iter().fold(
-            quote!(::std::option::Option::<::std::string::String>::None),
+            quote_spanned!(default_span=> ::std::option::Option::<::std::string::String>::None),
             |acc, attribute_init| {
                 let attribute_init = attribute_init.gen_init(field_name);
-                quote! {
+                let span = attribute_init.span();
+                quote_spanned! {span=>
                     #acc.or(#attribute_init)
                 }
             },
         )
     }
 
-    pub(super) fn clap_field(self, field_name: &str) -> Option<NormalClapFieldInfo> {
+    pub(super) fn clap_field(self, field_name: &str) -> Result<Option<NormalClapFieldInfo>> {
         for attr in self.variables {
             if let FieldAttribute::Clap(clap) = attr {
-                return Some(clap.normalize(field_name));
+                return Some(clap.normalize(field_name)).transpose();
             }
         }
-        None
+        Ok(None)
     }
 
-    pub(super) fn gen_init(&self, field_name: &str) -> TokenStream {
-        if self.variables.is_empty() && self.default.is_none() {
-            panic!("No source is set for the {field_name} field");
-        }
+    pub(super) fn gen_init(&self, field: &Field) -> TokenStream {
+        let field_name = field.ident.clone().unwrap().to_string();
+        let tp = &field.ty;
         let default_initialization = match &self.default {
-            None => quote!(::std::option::Option::None),
-            Some(d) if d.inner.is_none() => quote!(::std::option::Option::Some(
-                ::std::default::Default::default()
-            )),
-            Some(d) => {
-                format_to_tokens!("::std::option::Option::Some({})", d.inner.clone().unwrap())
+            None => quote_spanned!(field.span()=> ::std::option::Option::None),
+            Some(Default { inner: None }) => {
+                quote_spanned!(field.span()=> ::std::option::Option::Some::<#tp>(
+                    ::std::default::Default::default()
+                ))
             }
+            Some(Default { inner: Some(def) }) => quote_spanned! {field.span()=>
+                ::std::option::Option::Some::<#tp>(#def)
+            },
         };
         let deserializer = self.deserializer();
-        let rest = self.gen_rest_init(field_name);
-        let missing_err = self.gen_err(field_name);
+        let rest = self.gen_rest_init(&field_name);
+        let missing_err = self.gen_err(&field_name);
 
-        quote! {
+        quote_spanned! {field.span()=>
             (|| -> ::std::result::Result<_, ::config_manager::Error> {
                 let init_without_default = #rest;
                 match (init_without_default, #default_initialization) {
@@ -167,29 +191,35 @@ pub(crate) enum FieldAttribute {
 }
 
 impl FieldAttribute {
+    fn span(&self) -> Span {
+        match self {
+            Self::Clap(v) => v.span,
+            Self::Env(v) => v.span,
+            Self::Config(v) => v.span,
+        }
+    }
+
     fn gen_init(&self, field_name: &str) -> TokenStream {
+        let span = self.span();
         match &self {
             Self::Env(env) => {
-                format_to_tokens!(
-                    "env_data.get(&({}) as \
-                     &::std::primitive::str).map(::std::string::ToString::to_string)",
-                    env.prefixed_name(field_name)
-                )
+                let prefixed_name = env.prefixed_name(field_name);
+                quote_spanned! {span=>
+                    env_data.get(&(#prefixed_name) as &::std::primitive::str).map(::std::string::ToString::to_string)
+                }
             }
             Self::Config(cfg) => {
-                format_to_tokens!(
-                    "::config_manager::__private::find_field_in_table(&config_file_data, {}, \
-                     {}.to_string())?",
-                    cfg.table(),
-                    cfg.key(field_name)
-                )
+                let table = cfg.table();
+                let key = cfg.key(field_name);
+                quote_spanned! {span=>
+                    ::config_manager::__private::find_field_in_table(config_file_data, #table, #key.to_string())?
+                }
             }
             Self::Clap(clap) => {
-                format_to_tokens!(
-                    "clap_data.get_one::<::std::string::String>({}).\
-                     map(::std::string::ToString::to_string)",
-                    clap.normal_long(field_name)
-                )
+                let long = clap.normal_long(field_name);
+                quote_spanned! {span=>
+                    clap_data.get_one::<::std::string::String>(#long).map(::std::string::ToString::to_string)
+                }
             }
         }
     }
@@ -197,35 +227,43 @@ impl FieldAttribute {
 
 impl Display for FieldAttribute {
     fn fmt(&self, f: &mut __private::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{}",
-            match self {
-                Self::Clap(_) => "command line",
-                Self::Config(_) => "configuration file",
-                Self::Env(_) => "env",
-            }
-        )
+        let source = match self {
+            Self::Clap(_) => "command line",
+            Self::Config(_) => "configuration file",
+            Self::Env(_) => "env",
+        };
+        write!(f, "{source}",)
     }
 }
 
-#[derive(Default, Clone)]
+#[derive(Clone)]
 pub(crate) struct Env {
-    pub(super) inner: Option<String>,
+    pub(super) inner: Option<TokenStream>,
+    pub(super) span: Span,
+}
+
+impl std::default::Default for Env {
+    fn default() -> Self {
+        Self {
+            inner: None,
+            span: Span::call_site(),
+        }
+    }
 }
 
 impl Env {
-    fn prefixed_name(&self, field_name: &str) -> String {
+    fn prefixed_name(&self, field_name: &str) -> TokenStream {
+        let span = self.span;
         let env_attribute = match &self.inner {
-            None => quote!(::std::option::Option::<&::std::primitive::str>::None),
+            None => quote_spanned!(span=> ::std::option::Option::<&::std::primitive::str>::None),
             Some(value) => {
-                format_to_tokens!("::std::option::Option::<&::std::primitive::str>::Some({value})")
+                quote_spanned!(span=> ::std::option::Option::<&::std::primitive::str>::Some(#value))
             }
         };
         let binary_name = binary_name();
-        let field_name_lowercase = field_name.to_lowercase();
+        let field_name_lowercase = str_to_tokens(field_name.to_lowercase(), span);
 
-        quote! {
+        quote_spanned! {span=>
             {
                 let env_prefix = env_prefix.clone();
                 match (#env_attribute, env_prefix) {
@@ -243,112 +281,119 @@ impl Env {
                 }.to_lowercase()
             }
         }
-        .to_string()
     }
 }
 
-#[derive(Default, Clone)]
+#[derive(Clone)]
 pub(crate) struct Config {
-    pub(super) key: Option<String>,
-    pub(super) table: Option<String>,
+    span: Span,
+    pub(super) key: Option<TokenStream>,
+    pub(super) table: Option<TokenStream>,
+}
+
+impl std::default::Default for Config {
+    fn default() -> Self {
+        Self {
+            span: Span::call_site(),
+            key: None,
+            table: None,
+        }
+    }
 }
 
 impl Config {
-    fn key(&self, field_name: &str) -> String {
+    fn key(&self, field_name: &str) -> TokenStream {
         self.key
             .clone()
-            .unwrap_or_else(|| format!("\"{field_name}\""))
+            .unwrap_or_else(|| str_to_tokens(field_name, self.span))
     }
-    fn table(&self) -> String {
+    fn table(&self) -> TokenStream {
         self.table
             .clone()
-            .map(|table| format!("::std::option::Option::Some(\"{table}\".to_string())"))
-            .unwrap_or_else(|| "::std::option::Option::None".to_string())
+            .map(|table| quote_spanned!(table.span()=> ::std::option::Option::Some(#table.to_string())))
+            .unwrap_or_else(|| quote_spanned!(self.span=> ::std::option::Option::None))
     }
 }
 
 #[derive(Default, Clone)]
 pub(crate) struct Default {
-    pub(super) inner: Option<String>,
+    pub(super) inner: Option<TokenStream>,
 }
 
 pub(super) fn extract_attributes(
-    field: Field,
-    table_name: &Option<String>,
-) -> Option<ExtractedAttributes> {
+    field: &Field,
+    table_name: &Option<TokenStream>,
+) -> Result<Option<ExtractedAttributes>> {
     let is_bool = field.ty.to_token_stream().to_string() == "bool";
     let is_string = is_string(&field.ty);
     let docs = extract_docs(&field.attrs);
-    let field_name = field.ident.expect("Unnamed fields are forbidden");
 
     let mut res = ExtractedAttributes::default();
 
-    let attr = field.attrs.iter().find(|a| a.path().is_ident(SOURCE_KEY))?;
+    let attr = match field.attrs.iter().find(|a| a.path().is_ident(SOURCE_KEY)) {
+        None => return Ok(None),
+        Some(attr) => attr,
+    };
 
-    let nested = attr
-        .parse_args_with(Punctuated::<Meta, Token![,]>::parse_terminated)
-        .unwrap();
+    let nested = attr.parse_args_with(Punctuated::<Meta, Token![,]>::parse_terminated)?;
 
     for arg in nested {
         match path_to_string(arg.path()).as_str() {
-            CLAP_KEY => match arg {
-                Meta::Path(_) => res
+            CLAP_KEY => match &arg {
+                Meta::Path(_p) => res
                     .variables
-                    .push(FieldAttribute::Clap(ClapFieldParseResult::default())),
+                    .push(FieldAttribute::Clap(ClapFieldParseResult::new(arg.span()))),
                 Meta::List(clap_metalist) => {
-                    let mut clap_attributes = parse_clap_field_attribute(&clap_metalist, is_bool);
+                    let mut clap_attributes = parse_clap_field_attribute(clap_metalist, is_bool)?;
                     clap_attributes.docs = docs.clone();
                     res.variables.push(FieldAttribute::Clap(clap_attributes));
                 }
                 _ => {
-                    panic!(
-                        "clap attribute must match #[clap(...)] or \
-                                                     #[clap]"
+                    panic_span!(
+                        arg.span(),
+                        "clap attribute must match #[clap(...)] or #[clap]"
                     )
                 }
             },
             DEFAULT => {
                 if res.default.is_some() {
-                    panic!("Default can be assigned only once per field")
+                    panic_span!(arg.span(), "Default can be assigned only once per field")
                 }
-                let mut default_init = extract_default(&arg);
+                let mut default_init = extract_default(&arg)?;
                 if is_string {
-                    default_init = default_init.map(|s| format!("::std::convert::Into::into({s})"));
+                    default_init = default_init
+                        .map(|d| quote_spanned!(d.span()=> ::std::convert::Into::into(#d)));
                 }
                 res.default = Some(Default {
                     inner: default_init,
                 })
             }
             ENV_KEY => res.variables.push(FieldAttribute::Env(Env {
-                inner: match_literal_or_init_from(&arg, AcceptedLiterals::String)
-                    .as_ref()
-                    .map(InitFrom::as_string),
+                inner: meta_to_option(&arg)?,
+                span: arg.span(),
             })),
             CONFIG_KEY => res.variables.push(FieldAttribute::Config(Config {
-                key: match_literal_or_init_from(&arg, AcceptedLiterals::String)
-                    .as_ref()
-                    .map(InitFrom::as_string),
+                span: arg.span(),
+                key: meta_to_option(&arg)?,
                 table: table_name.clone(),
             })),
             DESERIALIZER => {
                 if res.deserializer.is_some() {
-                    panic!(
-                        "Deserialize_with can be assigned only once \
-                                                     per field"
+                    panic_span!(
+                        arg.span(),
+                        "deserialize_with can be assigned only once per field"
                     )
                 }
-                res.deserializer = match_literal_or_init_from(&arg, AcceptedLiterals::String)
-                    .as_ref()
-                    .map(InitFrom::as_string);
+                if matches!(arg, Meta::Path(_)) {
+                    panic_span!(arg.span(), "deserialize_with can't be empty")
+                }
+                res.deserializer = meta_to_option(&arg)?.map(|val| (val, arg.span()));
             }
-            other => panic!(
-                "Unknown source attribute {other} of the field \
-                                             {field_name}"
-            ),
+            _ => panic_span!(arg.span(), "Unknown source attribute"),
         };
     }
 
-    Some(res)
+    Ok(Some(res))
 }
 
 fn is_string(ty: &Type) -> bool {

@@ -5,13 +5,13 @@ use crate::*;
 
 pub(super) fn generate_get_args_impl(
     clap_fields: impl Iterator<Item = ClapInitialization>,
-) -> TokenStream {
+) -> Result<TokenStream> {
     let mut pushes = TokenStream::new();
     for field in clap_fields {
         match field {
             ClapInitialization::None => (),
             ClapInitialization::Normal(arg) => {
-                pushes.extend(quote! {
+                pushes.extend(quote_spanned! {arg.span=>
                     res.push(#arg);
                 });
             }
@@ -20,15 +20,15 @@ pub(super) fn generate_get_args_impl(
                     res.extend_from_slice(&<#struct_type as ::config_manager::__private::Flatten>::get_args());
                 })
             }
-            ClapInitialization::Subcommand(sub) => panic!("Subcommand(type = {}) in a nested struct", sub.to_token_stream())
+            ClapInitialization::Subcommand(t) => panic_span!(t.span(), "Subcommand in a nested struct")
         }
     }
-    quote! {
+    Ok(quote! {
         use ::config_manager::__private::clap;
         let mut res = ::std::vec::Vec::new();
         #pushes
         res
-    }
+    })
 }
 
 pub(super) fn generate_parse_impl(
@@ -39,7 +39,7 @@ pub(super) fn generate_parse_impl(
         fields_init
             .iter()
             .fold(TokenStream::new(), |mut acc, (name, definition)| {
-                acc.extend(quote! {
+                acc.extend(quote_spanned! {name.span()=>
                     #name: #definition,
                 });
                 acc

@@ -160,7 +160,7 @@ Description of the configuration file. Has the following nested attributes:
 - `clap`: clap attributes of the argument, responsible for the path to the configuration file\
   **Note:** in this case, clap attribute must have the nested `long` attribute (`clap(long = "...")`)
 - `default`: default configuration file path
-- `optional`:  boolean attribute: should the macro panic (`false`) or not (`true`)\
+- `optional`: If the attribute is set, macro won't return Error if file is not found at set (by `clap`/`env`/`default`) path. Does not take values.\
   **Note:** It is allowed to specify multiple files: all of them will be merged.
   If there is a collision (the values of a particular key have been specified in two or more files),
   the value will be assigned from the file that has been described later (in the attribute list).
