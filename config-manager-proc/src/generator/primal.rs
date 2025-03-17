@@ -292,7 +292,7 @@ pub(super) fn struct_initialization(
             ::std::option::Option::Some(data) => data,
             ::std::option::Option::None => #env_data?
         };
-        let config_file_data = match config_file_data {
+        let config_file_data = &match config_file_data {
             ::std::option::Option::Some(data) => data,
             ::std::option::Option::None => #config_file_data?
         };

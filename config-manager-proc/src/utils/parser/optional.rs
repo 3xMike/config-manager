@@ -47,7 +47,7 @@ pub(crate) fn match_literal_or_init_from(
             match &args[0] {
                 Meta::NameValue(expr) => {
                     let expr = &expr.value;
-                    Ok(Some(quote_spanned!(attribute.span()=> {#expr})))
+                    Ok(Some(quote_spanned!(attribute.span()=> #expr)))
                 }
                 any => panic_span!(
                     attribute.span(),
@@ -74,7 +74,7 @@ pub(crate) fn extract_default(meta: &Meta) -> Result<Option<TokenStream>> {
             )
         }
         Meta::NameValue(MetaNameValue { value, .. }) => {
-            Ok(Some(quote_spanned!(meta.span()=> { #value })))
+            Ok(Some(quote_spanned!(meta.span()=>  #value )))
         }
     }
 }

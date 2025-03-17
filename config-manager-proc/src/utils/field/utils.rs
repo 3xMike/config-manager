@@ -196,7 +196,7 @@ impl FieldAttribute {
                 let table = cfg.table();
                 let key = cfg.key(field_name);
                 quote_spanned! {span=>
-                    ::config_manager::__private::find_field_in_table(&config_file_data, #table, #key.to_string())?
+                    ::config_manager::__private::find_field_in_table(config_file_data, #table, #key.to_string())?
                 }
             }
             Self::Clap(clap) => {

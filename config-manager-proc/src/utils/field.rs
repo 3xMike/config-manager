@@ -75,7 +75,7 @@ pub(crate) fn process_flatten_field(field: Field) -> Result<ProcessFieldResult> 
         name,
         clap_field: ClapInitialization::Flatten(ty.clone()),
         initialization: quote! {
-            <#ty as ::config_manager::__private::Flatten>::parse(&env_data, &config_file_data ,&clap_data, env_prefix.clone())?
+            <#ty as ::config_manager::__private::Flatten>::parse(&env_data, config_file_data ,&clap_data, env_prefix.clone())?
         },
     })
 }
