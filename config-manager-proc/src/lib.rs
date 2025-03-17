@@ -40,8 +40,8 @@ pub fn config(attrs: TokenStream0, input: TokenStream0) -> TokenStream0 {
     .into_iter()
     .collect::<Vec<_>>();
 
-    let mut annotations =
-        TokenStream0::from_str("#[derive(::config_manager::__private::__Config__)]").unwrap();
+    let mut annotations: TokenStream0 =
+        quote!(#[derive(::config_manager::__private::__Config__)]).into();
     annotations.extend(input.clone());
 
     let input = parse_macro_input!(input as DeriveInput);
