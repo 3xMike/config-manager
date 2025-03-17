@@ -5,6 +5,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased] - ReleaseDate
+## [0.4.0](https://github.com/3xMike/config-manager/releases/tag/0.4.0) - 2025-03-17
+### Added
+- Better errors emphasizing!!! Now compile time errors will underline the source code that causes them.
 ### Changed
 - `#config[file(optional)]` attribute now does not take value. File is required when not mentioned and optional when this attribute is set.
 
