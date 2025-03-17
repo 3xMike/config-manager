@@ -70,7 +70,7 @@ impl ToTokens for NormalClapFieldInfo {
 pub(crate) struct ExtractedAttributes {
     pub(crate) variables: Vec<FieldAttribute>,
     pub(crate) default: Option<Default>,
-    pub(crate) deserializer: Option<(String, Span)>,
+    pub(crate) deserializer: Option<(TokenStream, Span)>,
 }
 
 impl ExtractedAttributes {
@@ -85,7 +85,7 @@ impl ExtractedAttributes {
                 ::config_manager::__private::deser_hjson::from_str(&value)
             },
             Some((deser_fn, span)) => {
-                let ident = Ident::new(deser_fn.trim_matches('\"'), *span);
+                let ident = Ident::new(deser_fn.to_string().trim_matches('\"'), *span);
                 quote_spanned! {*span=> (#ident)(&value) }
             }
         }
@@ -215,7 +215,7 @@ impl Display for FieldAttribute {
 
 #[derive(Default, Clone)]
 pub(crate) struct Env {
-    pub(super) inner: Option<String>,
+    pub(super) inner: Option<TokenStream>,
 }
 
 impl Env {
@@ -251,23 +251,34 @@ impl Env {
     }
 }
 
-#[derive(Default, Clone)]
+#[derive(Clone)]
 pub(crate) struct Config {
-    pub(super) key: Option<String>,
-    pub(super) table: Option<String>,
+    span: Span,
+    pub(super) key: Option<TokenStream>,
+    pub(super) table: Option<TokenStream>,
+}
+
+impl std::default::Default for Config {
+    fn default() -> Self {
+        Self {
+            span: Span::call_site(),
+            key: None,
+            table: None,
+        }
+    }
 }
 
 impl Config {
-    fn key(&self, field_name: &str) -> String {
+    fn key(&self, field_name: &str) -> TokenStream {
         self.key
             .clone()
-            .unwrap_or_else(|| format!("\"{field_name}\""))
+            .unwrap_or_else(|| str_to_tokens(field_name, self.span))
     }
-    fn table(&self) -> String {
+    fn table(&self) -> TokenStream {
         self.table
             .clone()
-            .map(|table| format!("::std::option::Option::Some(\"{table}\".to_string())"))
-            .unwrap_or_else(|| "::std::option::Option::None".to_string())
+            .map(|table| quote_spanned!(table.span()=> ::std::option::Option::Some(#table.to_string())))
+            .unwrap_or_else(|| quote_spanned!(self.span=> ::std::option::Option::None))
     }
 }
 
@@ -278,7 +289,7 @@ pub(crate) struct Default {
 
 pub(super) fn extract_attributes(
     field: &Field,
-    table_name: &Option<String>,
+    table_name: &Option<TokenStream>,
 ) -> Result<Option<ExtractedAttributes>> {
     let is_bool = field.ty.to_token_stream().to_string() == "bool";
     let is_string = is_string(&field.ty);
@@ -328,6 +339,7 @@ pub(super) fn extract_attributes(
                 inner: meta_to_option(&arg)?,
             })),
             CONFIG_KEY => res.variables.push(FieldAttribute::Config(Config {
+                span: arg.span(),
                 key: meta_to_option(&arg)?,
                 table: table_name.clone(),
             })),

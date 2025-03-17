@@ -56,11 +56,11 @@ pub(crate) fn str_to_tokens<S: AsRef<str>>(s: S, span: Span) -> TokenStream {
     LitStr::new(s, span).to_token_stream()
 }
 
-pub(crate) fn option_to_tokens(opt: &Option<String>) -> TokenStream {
+pub(crate) fn option_to_tokens(opt: &Option<TokenStream>) -> TokenStream {
     match opt {
         None => quote!(::std::option::Option::None),
         Some(pref) => {
-            quote!(::std::option::Option::<::std::string::String>::Some(#pref.to_string()))
+            quote_spanned!(pref.span()=> ::std::option::Option::<::std::string::String>::Some(#pref.to_string()))
         }
     }
 }

@@ -12,7 +12,7 @@ pub(crate) enum ClapOption<T> {
     Some(T),
 }
 
-type MaybeString = ClapOption<String>;
+type MaybeString = ClapOption<TokenStream>;
 
 impl<T> ClapOption<T> {
     fn on_empty<F: FnOnce() -> T>(self, alternative: F) -> Option<T> {
@@ -41,7 +41,7 @@ pub(crate) struct ClapFieldParseResult {
     pub(crate) short: MaybeString,
     pub(crate) help: MaybeString,
     pub(crate) long_help: MaybeString,
-    pub(crate) help_heading: Option<String>,
+    pub(crate) help_heading: Option<TokenStream>,
     pub(crate) flag: bool,
 }
 
@@ -59,9 +59,9 @@ impl ClapFieldParseResult {
         }
     }
 
-    fn get_docs<S: AsRef<str>>(&self, attr_name: S) -> Result<String> {
+    fn get_docs<S: AsRef<str>>(&self, attr_name: S) -> Result<TokenStream> {
         match self.docs.clone() {
-            Some(val) => Ok(format!("\"{val}\"")),
+            Some(val) => Ok(str_to_tokens(val, self.span)),
             None => Err(Error::new(
                 self.span,
                 format!("if clap({}) is used without value, field docs must be provided. But there are no docs", attr_name.as_ref())
@@ -71,9 +71,9 @@ impl ClapFieldParseResult {
 }
 
 impl ClapFieldParseResult {
-    pub(crate) fn normal_long(&self, field_name: &str) -> String {
+    pub(crate) fn normal_long(&self, field_name: &str) -> TokenStream {
         match &self.long {
-            ClapOption::None | ClapOption::Empty => format!("\"{field_name}\""),
+            ClapOption::None | ClapOption::Empty => str_to_tokens(field_name, self.span),
             ClapOption::Some(long) => long.clone(),
         }
     }
@@ -94,7 +94,7 @@ impl ClapFieldParseResult {
                     .ok_or_else(|| {
                         Error::new(self.span, "empty clap(short) is forbidden for config files")
                     })
-                    .map(|c| c.to_token_stream().to_string())
+                    .map(|c| LitChar::new(c, self.span).to_token_stream())
             })?,
             help_heading: self.help_heading,
             flag: self.flag,
@@ -106,7 +106,7 @@ pub(crate) struct ClapAppParseResult {
     pub(crate) span: Span,
 
     pub(crate) docs: Option<String>,
-    pub(crate) name: Option<String>,
+    pub(crate) name: Option<TokenStream>,
     pub(crate) version: MaybeString,
     pub(crate) author: MaybeString,
     pub(crate) about: MaybeString,
@@ -133,24 +133,28 @@ impl ClapAppParseResult {
                 .clone()
                 .on_empty_res(|| self.get_docs("long_about"))?,
             name: match self.name {
-                None => "::config_manager::__private::clap::crate_name!()".to_string(),
+                None => {
+                    quote_spanned!(self.span=> ::config_manager::__private::clap::crate_name!())
+                }
                 Some(name) => name,
             },
-            version: self
-                .version
-                .on_empty(|| "::config_manager::__private::clap::crate_version!()".to_string()),
+            version: self.version.on_empty(
+                || quote_spanned!(self.span=>  ::config_manager::__private::clap::crate_version!()),
+            ),
             author: self.author.on_empty(|| {
-                "::config_manager::__private::clap::crate_authors!(\"\\n\")".to_string()
+                quote_spanned! {self.span=>
+                        ::config_manager::__private::clap::crate_authors!("\n")
+                }
             }),
             about: self
                 .about
-                .on_empty(|| "::config_manager::__private::clap::crate_description!()".to_string()),
+                .on_empty(|| quote_spanned!(self.span=> ::config_manager::__private::clap::crate_description!())),
         })
     }
 
-    fn get_docs<S: AsRef<str>>(&self, attr_name: S) -> Result<String> {
+    fn get_docs<S: AsRef<str>>(&self, attr_name: S) -> Result<TokenStream> {
         match self.docs.clone() {
-            Some(val) => Ok(format!("\"{val}\"")),
+            Some(val) => Ok(str_to_tokens(val, self.span)),
             None => Err(Error::new(
                 self.span,
                 format!("if clap({}) is used without value, struct docs must be provided. But there are no docs", attr_name.as_ref())
@@ -161,7 +165,7 @@ impl ClapAppParseResult {
 
 fn meta_to_maybe(meta: &Meta) -> Result<MaybeString> {
     Ok(match_literal_or_init_from(meta, AcceptedLiterals::String)?
-        .map(|value| ClapOption::Some(value.as_string()))
+        .map(ClapOption::Some)
         .unwrap_or(ClapOption::Empty))
 }
 
@@ -207,7 +211,7 @@ pub(crate) fn parse_clap_field_attribute(
             "long" => res.long = meta_to_maybe(attr)?,
             "short" => {
                 res.short = match_literal_or_init_from(attr, AcceptedLiterals::Char)?
-                    .map(|value| ClapOption::Some(value.as_string()))
+                    .map(ClapOption::Some)
                     .unwrap_or(ClapOption::Empty)
             }
             "help" => res.help = meta_to_maybe(attr)?,

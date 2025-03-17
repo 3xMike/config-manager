@@ -28,9 +28,9 @@ struct ParsedConfigFileAttributes {
     span: Span,
     file_format: TokenStream,
     clap_info: Option<NormalClapFieldInfo>,
-    env_key: Option<String>,
+    env_key: Option<TokenStream>,
     optional: bool,
-    default: Option<String>,
+    default: Option<TokenStream>,
 }
 
 fn handle_file_attributes(class_attributes: &[Meta]) -> Result<Vec<ParsedConfigFileAttributes>> {
@@ -67,7 +67,10 @@ fn handle_file_attribute(attr: &Meta) -> Result<ParsedConfigFileAttributes> {
             }
             "format" => {
                 let file_attr = set_config_attr(file_format.is_some(), &arg, "format")?.unwrap();
-                file_format = Some(str_to_config_format_repr(file_attr, arg.span())?);
+                file_format = Some(str_to_config_format_repr(
+                    file_attr.to_string(),
+                    arg.span(),
+                )?);
             }
             "env" => env_key = set_config_attr(env_key.is_some(), &arg, "env")?,
             "optional" => {
@@ -122,7 +125,7 @@ fn set_config_attr<N: AsRef<str>>(
     already_set: bool,
     arg: &Meta,
     attr_name: N,
-) -> Result<Option<String>> {
+) -> Result<Option<TokenStream>> {
     let attr_name = attr_name.as_ref();
     if already_set {
         panic_span!(arg.span(), "attempted to set {attr_name} twice")
@@ -171,14 +174,13 @@ pub(crate) fn extract_configs_info(class_attributes: &[Meta]) -> Result<ConfigFi
 
         let clap_long = if let Some(clap_info) = &clap_info {
             let clap_long = clap_info.long.clone();
-            let is_new = config_clap_keys.insert(clap_long.clone());
+            let is_new = config_clap_keys.insert(clap_long.to_string());
             if !is_new {
                 panic_span!(
                     span,
                     "config file with clap key {clap_long} already specified"
                 );
             }
-            let clap_long = str_to_tokens(clap_long, span);
 
             quote_spanned!(span=> ::std::option::Option::Some(#clap_long))
         } else {
@@ -186,11 +188,10 @@ pub(crate) fn extract_configs_info(class_attributes: &[Meta]) -> Result<ConfigFi
         };
 
         let env_key = if let Some(env_key) = env_key {
-            let is_new = config_env_keys.insert(env_key.clone());
+            let is_new = config_env_keys.insert(env_key.to_string());
             if !is_new {
                 panic_span!(span, "config file with env key {env_key} already specified");
             }
-            let env_key = str_to_tokens(env_key, span);
 
             quote_spanned!(span=> ::std::option::Option::Some(#env_key))
         } else {
@@ -198,7 +199,6 @@ pub(crate) fn extract_configs_info(class_attributes: &[Meta]) -> Result<ConfigFi
         };
 
         let default_path = if let Some(default) = default {
-            let default = str_to_tokens(&default, span);
             quote_spanned!(span=> ::std::option::Option::Some(#default))
         } else {
             quote_spanned!(span=> ::std::option::Option::None)

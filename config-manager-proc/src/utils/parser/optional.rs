@@ -3,20 +3,6 @@
 
 use crate::*;
 
-pub(crate) enum InitFrom {
-    Fn(String),
-    Literal(Lit),
-}
-
-impl InitFrom {
-    pub(crate) fn as_string(&self) -> String {
-        match self {
-            InitFrom::Fn(value) => format!("{{{value}}}"),
-            InitFrom::Literal(lit) => lit.to_token_stream().to_string(),
-        }
-    }
-}
-
 #[derive(Copy, Clone)]
 pub(crate) enum AcceptedLiterals {
     String,
@@ -26,7 +12,7 @@ pub(crate) enum AcceptedLiterals {
 pub(crate) fn match_literal_or_init_from(
     attribute: &Meta,
     accepted_literals: AcceptedLiterals,
-) -> Result<Option<InitFrom>> {
+) -> Result<Option<TokenStream>> {
     match attribute {
         Meta::Path(_) => Ok(None),
         Meta::NameValue(MetaNameValue {
@@ -35,14 +21,14 @@ pub(crate) fn match_literal_or_init_from(
         }) => Ok(Some(match accepted_literals {
             AcceptedLiterals::String => {
                 if matches!(lit, Lit::Str(_)) {
-                    InitFrom::Literal(lit.clone())
+                    lit.to_token_stream()
                 } else {
                     panic_span!(attribute.span(), "expected string, got {:#?}", lit);
                 }
             }
             AcceptedLiterals::Char => {
                 if matches!(lit, Lit::Char(_)) {
-                    InitFrom::Literal(lit.clone())
+                    lit.to_token_stream()
                 } else {
                     panic_span!(attribute.span(), "expected char, got {:#?}", lit);
                 }
@@ -60,7 +46,8 @@ pub(crate) fn match_literal_or_init_from(
 
             match &args[0] {
                 Meta::NameValue(expr) => {
-                    Ok(Some(InitFrom::Fn(expr.value.to_token_stream().to_string())))
+                    let expr = &expr.value;
+                    Ok(Some(quote_spanned!(attribute.span()=> {#expr})))
                 }
                 any => panic_span!(
                     attribute.span(),
@@ -92,8 +79,6 @@ pub(crate) fn extract_default(meta: &Meta) -> Result<Option<TokenStream>> {
     }
 }
 
-pub(crate) fn meta_to_option(meta: &Meta) -> Result<Option<String>> {
-    Ok(match_literal_or_init_from(meta, AcceptedLiterals::String)?
-        .as_ref()
-        .map(InitFrom::as_string))
+pub(crate) fn meta_to_option(meta: &Meta) -> Result<Option<TokenStream>> {
+    match_literal_or_init_from(meta, AcceptedLiterals::String)
 }

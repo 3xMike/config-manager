@@ -21,12 +21,12 @@ pub(crate) enum ClapInitialization {
 pub(crate) struct NormalClapFieldInfo {
     pub(crate) span: Span,
 
-    pub(crate) long: String,
-    pub(crate) short: Option<String>,
-    pub(crate) help: Option<String>,
-    pub(crate) long_help: Option<String>,
+    pub(crate) long: TokenStream,
+    pub(crate) short: Option<TokenStream>,
+    pub(crate) help: Option<TokenStream>,
+    pub(crate) long_help: Option<TokenStream>,
     pub(crate) flag: bool,
-    pub(crate) help_heading: Option<String>,
+    pub(crate) help_heading: Option<TokenStream>,
 }
 
 pub(crate) struct ProcessFieldResult {
@@ -37,7 +37,7 @@ pub(crate) struct ProcessFieldResult {
 
 pub(crate) fn process_field(
     field: Field,
-    table_name: &Option<String>,
+    table_name: &Option<TokenStream>,
     default_order: &Option<ExtractedAttributes>,
 ) -> Result<ProcessFieldResult> {
     let field_name = field.ident.clone().unwrap();

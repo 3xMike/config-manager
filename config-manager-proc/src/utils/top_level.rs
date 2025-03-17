@@ -6,11 +6,11 @@ use crate::utils::field::utils::{ExtractedAttributes, FieldAttribute};
 use crate::*;
 
 pub(crate) struct AppTopLevelInfo {
-    pub(crate) env_prefix: Option<String>,
+    pub(crate) env_prefix: Option<TokenStream>,
     pub(crate) clap_app_info: NormalClapAppInfo,
     pub(crate) configs: ConfigFilesInfo,
     pub(crate) debug_cmd_input: Option<TokenStream>,
-    pub(crate) table_name: Option<String>,
+    pub(crate) table_name: Option<TokenStream>,
     pub(crate) default_order: Option<ExtractedAttributes>,
 }
 
@@ -30,11 +30,11 @@ impl AppTopLevelInfo {
 
 #[derive(Default, Clone)]
 pub(crate) struct NormalClapAppInfo {
-    pub(crate) name: String,
-    pub(crate) version: Option<String>,
-    pub(crate) author: Option<String>,
-    pub(crate) about: Option<String>,
-    pub(crate) long_about: Option<String>,
+    pub(crate) name: TokenStream,
+    pub(crate) version: Option<TokenStream>,
+    pub(crate) author: Option<TokenStream>,
+    pub(crate) about: Option<TokenStream>,
+    pub(crate) long_about: Option<TokenStream>,
 }
 
 impl ToTokens for NormalClapAppInfo {
@@ -83,10 +83,10 @@ pub(crate) fn extract_clap_app(attrs: &[Meta], docs: Option<String>) -> Result<N
         .normalize()
 }
 
-pub(crate) fn extract_env_prefix(attrs: &[Meta]) -> Result<Option<String>> {
+pub(crate) fn extract_env_prefix(attrs: &[Meta]) -> Result<Option<TokenStream>> {
     match attrs.iter().find(|a| a.path().is_ident(ENV_PREFIX_KEY)) {
-        None => Ok(Some(String::new())),
-        Some(meta) => Ok(meta_to_option(meta)?.map(|s| s.trim_matches('"').to_string())),
+        None => Ok(Some(quote!(""))),
+        Some(meta) => Ok(meta_to_option(meta)?),
     }
 }
 
@@ -108,14 +108,14 @@ pub(crate) fn extract_debug_cmd_input(attrs: &[Meta]) -> Result<Option<TokenStre
     ))
 }
 
-pub(crate) fn extract_table_name(attrs: &[Meta]) -> Result<Option<String>> {
+pub(crate) fn extract_table_name(attrs: &[Meta]) -> Result<Option<TokenStream>> {
     let meta = match attrs.iter().find(|a| a.path().is_ident(TABLE_NAME_KEY)) {
         None => return Ok(None),
         Some(meta) => meta,
     };
 
     match meta {
-        Meta::NameValue(meta_value_lit!(lit_str)) => Ok(Some(lit_str.value())),
+        Meta::NameValue(meta_value_lit!(lit_str)) => Ok(Some(lit_str.to_token_stream())),
         _ => panic_span!(
             meta.span(),
             "{TABLE_NAME_KEY} must match #[{TABLE_NAME_KEY} = \"...\"]"

@@ -5,7 +5,7 @@ use super::{nested::*, primal::*};
 use crate::{utils::option_to_tokens, *};
 
 pub(crate) struct InitializationInfo {
-    pub(crate) env_prefix: Option<String>,
+    pub(crate) env_prefix: Option<TokenStream>,
     pub(crate) class_ident: proc_macro2::Ident,
     pub(crate) clap_app_info: NormalClapAppInfo,
     pub(crate) configs: ConfigFilesInfo,
