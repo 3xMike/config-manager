@@ -16,6 +16,8 @@ macro_rules! format_to_tokens {
         TokenStream::from_str(&std::format!($($arg)*)).unwrap()
     };
 }
+// TODO: rm this
+// TODO: use quote_spanned everywhere
 
 macro_rules! meta_value_lit {
     ($($arg:tt)*) => {
@@ -47,6 +49,12 @@ pub(crate) use format_to_tokens;
 pub(crate) use meta_value_lit;
 pub(crate) use panic_site;
 pub(crate) use panic_span;
+
+pub(crate) fn str_to_tokens<S: AsRef<str>>(s: S, span: Span) -> TokenStream {
+    let unprefixed = s.as_ref().strip_prefix('\"').unwrap_or_else(|| s.as_ref());
+    let s = unprefixed.strip_suffix('\"').unwrap_or(unprefixed);
+    LitStr::new(s, span).to_token_stream()
+}
 
 pub(crate) fn option_to_tokens(opt: &Option<String>) -> TokenStream {
     match opt {

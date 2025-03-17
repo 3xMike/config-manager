@@ -18,6 +18,7 @@ use utils::{
     field::*,
     panic_site, panic_span,
     parser::*,
+    str_to_tokens,
     top_level::*,
     PanicOnNone,
 };

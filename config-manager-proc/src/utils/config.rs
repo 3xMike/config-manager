@@ -6,19 +6,19 @@ use std::collections::HashSet;
 use super::attributes::*;
 use crate::*;
 
-fn str_to_config_format_repr<S: AsRef<str>>(s: S, span: Span) -> Result<String> {
+fn str_to_config_format_repr<S: AsRef<str>>(s: S, span: Span) -> Result<TokenStream> {
     let s = s.as_ref().trim_matches('"');
     match s {
         "json" | "json5" | "toml" | "yaml" | "ron" => {
-            let capitalize_first = |s: &str| -> String {
-                let mut chars = s.chars();
-                let first_char = chars.next().unwrap();
-                first_char.to_uppercase().to_string() + &chars.collect::<String>()
-            };
+            let mut chars = s.chars();
+            let first_char = chars.next().unwrap();
+            let accepted_format =
+                first_char.to_uppercase().to_string() + &chars.collect::<String>();
+            let accepted_format = Ident::new(&accepted_format, span);
 
-            let accepted_format = capitalize_first(s);
-            let pref = "::config_manager::__private::config::FileFormat::".to_string();
-            Ok(pref + &accepted_format)
+            Ok(
+                quote_spanned!(span=> ::config_manager::__private::config::FileFormat::#accepted_format),
+            )
         }
         _ => panic_span!(span, "{s} format is not supported"),
     }
@@ -26,7 +26,7 @@ fn str_to_config_format_repr<S: AsRef<str>>(s: S, span: Span) -> Result<String> 
 
 struct ParsedConfigFileAttributes {
     span: Span,
-    file_format: String,
+    file_format: TokenStream,
     clap_info: Option<NormalClapFieldInfo>,
     env_key: Option<String>,
     optional: bool,
@@ -178,31 +178,32 @@ pub(crate) fn extract_configs_info(class_attributes: &[Meta]) -> Result<ConfigFi
                     "config file with clap key {clap_long} already specified"
                 );
             }
-            TokenStream::from_str(&format!("::std::option::Option::Some({clap_long})"))
+            let clap_long = str_to_tokens(clap_long, span);
+
+            quote_spanned!(span=> ::std::option::Option::Some(#clap_long))
         } else {
-            TokenStream::from_str("::std::option::Option::<&::std::primitive::str>::None")
-        }
-        .unwrap();
+            quote_spanned!(span=> ::std::option::Option::<&::std::primitive::str>::None)
+        };
 
         let env_key = if let Some(env_key) = env_key {
             let is_new = config_env_keys.insert(env_key.clone());
             if !is_new {
                 panic_span!(span, "config file with env key {env_key} already specified");
             }
-            TokenStream::from_str(&format!("::std::option::Option::Some({env_key})"))
+            let env_key = str_to_tokens(env_key, span);
+
+            quote_spanned!(span=> ::std::option::Option::Some(#env_key))
         } else {
-            TokenStream::from_str("::std::option::Option::<&::std::primitive::str>::None")
-        }
-        .unwrap();
+            quote_spanned!(span=> ::std::option::Option::<&::std::primitive::str>::None)
+        };
 
         let default_path = if let Some(default) = default {
-            TokenStream::from_str(&format!("::std::option::Option::Some({default})"))
+            let default = str_to_tokens(&default, span);
+            quote_spanned!(span=> ::std::option::Option::Some(#default))
         } else {
-            TokenStream::from_str("::std::option::Option::None")
-        }
-        .unwrap();
+            quote_spanned!(span=> ::std::option::Option::None)
+        };
 
-        let file_format = TokenStream::from_str(&file_format).unwrap();
         configs_attributes.push(ConfigFileInfo {
             file_format,
             clap_long,
