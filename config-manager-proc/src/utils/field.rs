@@ -42,7 +42,7 @@ pub(crate) fn process_field(
 ) -> Result<ProcessFieldResult> {
     let field_name = field.ident.clone().unwrap();
 
-    let attributes_order = extract_attributes(field, table_name)?
+    let attributes_order = extract_attributes(&field, table_name)?
         .or_else(|| default_order.clone())
         .unwrap_or_else(|| ExtractedAttributes {
             variables: vec![
@@ -54,7 +54,7 @@ pub(crate) fn process_field(
         });
 
     Ok(ProcessFieldResult {
-        initialization: attributes_order.gen_init(&field_name.to_string()),
+        initialization: attributes_order.gen_init(&field),
         clap_field: match attributes_order.clap_field(&field_name.to_string())? {
             Some(init) => ClapInitialization::Normal(init),
             None => ClapInitialization::None,

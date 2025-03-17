@@ -70,7 +70,7 @@ impl ToTokens for NormalClapFieldInfo {
 pub(crate) struct ExtractedAttributes {
     pub(crate) variables: Vec<FieldAttribute>,
     pub(crate) default: Option<Default>,
-    pub(crate) deserializer: Option<String>,
+    pub(crate) deserializer: Option<(String, Span)>,
 }
 
 impl ExtractedAttributes {
@@ -84,9 +84,9 @@ impl ExtractedAttributes {
                 };
                 ::config_manager::__private::deser_hjson::from_str(&value)
             },
-            Some(deser_fn) => {
-                let deser_fn = deser_fn.trim_matches('\"');
-                format_to_tokens!("({deser_fn})(&value)")
+            Some((deser_fn, span)) => {
+                let ident = Ident::new(deser_fn.trim_matches('\"'), *span);
+                quote_spanned! {*span=> (#ident)(&value) }
             }
         }
     }
@@ -127,19 +127,23 @@ impl ExtractedAttributes {
         Ok(None)
     }
 
-    pub(super) fn gen_init(&self, field_name: &str) -> TokenStream {
+    pub(super) fn gen_init(&self, field: &Field) -> TokenStream {
+        let field_name = field.ident.clone().unwrap().to_string();
+        let tp = &field.ty;
         let default_initialization = match &self.default {
-            None => quote!(::std::option::Option::None),
-            Some(d) if d.inner.is_none() => quote!(::std::option::Option::Some(
-                ::std::default::Default::default()
-            )),
-            Some(d) => {
-                format_to_tokens!("::std::option::Option::Some({})", d.inner.clone().unwrap())
+            None => quote_spanned!(field.span()=> ::std::option::Option::None),
+            Some(Default { inner: None }) => {
+                quote_spanned!(field.span()=> ::std::option::Option::Some::<#tp>(
+                    ::std::default::Default::default()
+                ))
             }
+            Some(Default { inner: Some(def) }) => quote_spanned! {field.span()=>
+                ::std::option::Option::Some::<#tp>(#def)
+            },
         };
         let deserializer = self.deserializer();
-        let rest = self.gen_rest_init(field_name);
-        let missing_err = self.gen_err(field_name);
+        let rest = self.gen_rest_init(&field_name);
+        let missing_err = self.gen_err(&field_name);
 
         quote! {
             (|| -> ::std::result::Result<_, ::config_manager::Error> {
@@ -269,11 +273,11 @@ impl Config {
 
 #[derive(Default, Clone)]
 pub(crate) struct Default {
-    pub(super) inner: Option<String>,
+    pub(super) inner: Option<TokenStream>,
 }
 
 pub(super) fn extract_attributes(
-    field: Field,
+    field: &Field,
     table_name: &Option<String>,
 ) -> Result<Option<ExtractedAttributes>> {
     let is_bool = field.ty.to_token_stream().to_string() == "bool";
@@ -313,7 +317,8 @@ pub(super) fn extract_attributes(
                 }
                 let mut default_init = extract_default(&arg)?;
                 if is_string {
-                    default_init = default_init.map(|s| format!("::std::convert::Into::into({s})"));
+                    default_init = default_init
+                        .map(|d| quote_spanned!(d.span()=> ::std::convert::Into::into(#d)));
                 }
                 res.default = Some(Default {
                     inner: default_init,
@@ -336,7 +341,7 @@ pub(super) fn extract_attributes(
                 if matches!(arg, Meta::Path(_)) {
                     panic_span!(arg.span(), "deserialize_with can't be empty")
                 }
-                res.deserializer = meta_to_option(&arg)?;
+                res.deserializer = meta_to_option(&arg)?.map(|val| (val, arg.span()));
             }
             _ => panic_span!(arg.span(), "Unknown source attribute"),
         };

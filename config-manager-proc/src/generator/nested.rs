@@ -39,13 +39,14 @@ pub(super) fn generate_parse_impl(
         fields_init
             .iter()
             .fold(TokenStream::new(), |mut acc, (name, definition)| {
-                acc.extend(quote! {
+                acc.extend(quote_spanned! {name.span()=>
                     #name: #definition,
                 });
                 acc
             });
 
     quote! {
+        #[allow(unused_braces)]
         ::std::result::Result::<_, ::config_manager::Error>::Ok(
             #class {
                 #fields_initialization

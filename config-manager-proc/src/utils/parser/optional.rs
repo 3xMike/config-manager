@@ -77,7 +77,7 @@ pub(crate) fn match_literal_or_init_from(
     }
 }
 
-pub(crate) fn extract_default(meta: &Meta) -> Result<Option<String>> {
+pub(crate) fn extract_default(meta: &Meta) -> Result<Option<TokenStream>> {
     match meta {
         Meta::Path(_) => Ok(None),
         Meta::List(_) => {
@@ -87,7 +87,7 @@ pub(crate) fn extract_default(meta: &Meta) -> Result<Option<String>> {
             )
         }
         Meta::NameValue(MetaNameValue { value, .. }) => {
-            Ok(Some(format!("{{{}}}", value.to_token_stream())))
+            Ok(Some(quote_spanned!(meta.span()=> { #value })))
         }
     }
 }
