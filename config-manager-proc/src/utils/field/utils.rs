@@ -67,17 +67,30 @@ impl ToTokens for NormalClapFieldInfo {
     }
 }
 
-#[derive(Default, Clone)]
+#[derive(Clone)]
 pub(crate) struct ExtractedAttributes {
+    pub(crate) span: Span,
     pub(crate) variables: Vec<FieldAttribute>,
     pub(crate) default: Option<Default>,
     pub(crate) deserializer: Option<(TokenStream, Span)>,
 }
 
+impl std::default::Default for ExtractedAttributes {
+    fn default() -> Self {
+        Self {
+            span: Span::call_site(),
+            variables: vec![],
+            default: None,
+            deserializer: None,
+        }
+    }
+}
+
 impl ExtractedAttributes {
     fn deserializer(&self) -> TokenStream {
+        let span = self.span;
         match &self.deserializer {
-            None => quote! {
+            None => quote_spanned! {span=>
                 let value = if value.is_empty() {
                     "\"\"".to_string()
                 } else {
@@ -93,6 +106,7 @@ impl ExtractedAttributes {
     }
 
     fn gen_err(&self, field_name: &str) -> TokenStream {
+        let span = self.span;
         let err = format!(
             "field {field_name} not found nor in {} nor as a default",
             self.variables
@@ -102,17 +116,19 @@ impl ExtractedAttributes {
                 .as_slice()
                 .join(", ")
         );
-        quote! {
+        quote_spanned! {span=>
             ::config_manager::Error::MissingArgument(#err.to_string())
         }
     }
 
     fn gen_rest_init(&self, field_name: &str) -> TokenStream {
+        let default_span = self.span;
         self.variables.iter().fold(
-            quote!(::std::option::Option::<::std::string::String>::None),
+            quote_spanned!(default_span=> ::std::option::Option::<::std::string::String>::None),
             |acc, attribute_init| {
                 let attribute_init = attribute_init.gen_init(field_name);
-                quote! {
+                let span = attribute_init.span();
+                quote_spanned! {span=>
                     #acc.or(#attribute_init)
                 }
             },
@@ -146,7 +162,7 @@ impl ExtractedAttributes {
         let rest = self.gen_rest_init(&field_name);
         let missing_err = self.gen_err(&field_name);
 
-        quote! {
+        quote_spanned! {field.span()=>
             (|| -> ::std::result::Result<_, ::config_manager::Error> {
                 let init_without_default = #rest;
                 match (init_without_default, #default_initialization) {
@@ -239,7 +255,7 @@ impl Env {
     fn prefixed_name(&self, field_name: &str) -> TokenStream {
         let span = self.span;
         let env_attribute = match &self.inner {
-            None => quote!(::std::option::Option::<&::std::primitive::str>::None),
+            None => quote_spanned!(span=> ::std::option::Option::<&::std::primitive::str>::None),
             Some(value) => {
                 quote_spanned!(span=> ::std::option::Option::<&::std::primitive::str>::Some(#value))
             }

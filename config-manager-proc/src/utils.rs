@@ -9,8 +9,6 @@ pub(crate) mod field;
 pub(crate) mod parser;
 pub(crate) mod top_level;
 
-// TODO: use quote_spanned everywhere
-
 macro_rules! meta_value_lit {
     ($($arg:tt)*) => {
         syn::MetaNameValue {

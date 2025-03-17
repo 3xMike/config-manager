@@ -11,7 +11,7 @@ pub(super) fn generate_get_args_impl(
         match field {
             ClapInitialization::None => (),
             ClapInitialization::Normal(arg) => {
-                pushes.extend(quote! {
+                pushes.extend(quote_spanned! {arg.span=>
                     res.push(#arg);
                 });
             }
@@ -46,7 +46,6 @@ pub(super) fn generate_parse_impl(
             });
 
     quote! {
-        #[allow(unused_braces)]
         ::std::result::Result::<_, ::config_manager::Error>::Ok(
             #class {
                 #fields_initialization

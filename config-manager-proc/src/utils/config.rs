@@ -142,6 +142,7 @@ pub(crate) struct ConfigFilesInfo {
 }
 
 pub(crate) struct ConfigFileInfo {
+    pub(crate) span: Span,
     pub(crate) file_format: TokenStream,
     pub(crate) clap_long: TokenStream,
     pub(crate) env_key: TokenStream,
@@ -205,6 +206,7 @@ pub(crate) fn extract_configs_info(class_attributes: &[Meta]) -> Result<ConfigFi
         };
 
         configs_attributes.push(ConfigFileInfo {
+            span,
             file_format,
             clap_long,
             env_key,

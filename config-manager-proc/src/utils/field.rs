@@ -68,14 +68,15 @@ pub(crate) fn field_is_flatten(field: &Field) -> bool {
 }
 
 pub(crate) fn process_flatten_field(field: Field) -> Result<ProcessFieldResult> {
+    let span = field.span();
     let name = field.ident.clone().unwrap();
     let ty = field.ty;
 
     Ok(ProcessFieldResult {
         name,
         clap_field: ClapInitialization::Flatten(ty.clone()),
-        initialization: quote! {
-            <#ty as ::config_manager::__private::Flatten>::parse(&env_data, config_file_data ,&clap_data, env_prefix.clone())?
+        initialization: quote_spanned! {span=>
+            <#ty as ::config_manager::__private::Flatten>::parse(env_data, config_file_data, clap_data, env_prefix.clone())?
         },
     })
 }
@@ -91,24 +92,27 @@ pub(crate) fn process_subcommand_field(
     field: Field,
     dbg_cmd: &Option<TokenStream>,
 ) -> Result<ProcessFieldResult> {
+    let span = field.span();
     let name = field.ident.clone().unwrap();
     let string_name = name.to_string();
     let ty = field.ty;
 
     let args = match dbg_cmd {
-        None => quote!(::std::env::args()),
-        Some(args) => quote! {
+        None => quote_spanned!(span=> ::std::env::args()),
+        Some(args) => quote_spanned! {span=>
             ::std::vec!["", #args].into_iter().map(|s| s.to_string())
         },
     };
     let (initialization, ty) = if let Some(nested_ty) = is_type_an_optional(&ty) {
         (
-            quote! (::config_manager::__private::parse_subcommand::<#nested_ty>(#args, clap_data)?),
+            quote_spanned! {span=>
+                ::config_manager::__private::parse_subcommand::<#nested_ty>(#args, clap_data)?
+            },
             nested_ty,
         )
     } else {
         (
-            quote! {
+            quote_spanned! {span=>
                 ::config_manager::__private::parse_subcommand::<#ty>(#args, clap_data)?
                     .ok_or_else(|| ::config_manager::Error::MissingArgument(
                         ::std::format!("Missing subcommand for non-optional field \"{}\"", #string_name)

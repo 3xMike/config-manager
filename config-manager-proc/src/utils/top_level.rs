@@ -73,7 +73,7 @@ impl ToTokens for NormalClapAppInfo {
                 None => TokenStream::new(),
                 Some(long_about) => quote_spanned!(span=> .long_about(#long_about)),
             };
-            quote! {
+            quote_spanned! {span=>
                 #name
                 #version
                 #author

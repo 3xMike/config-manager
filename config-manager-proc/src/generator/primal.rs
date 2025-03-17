@@ -121,6 +121,7 @@ pub(super) fn gen_config_file_data(config_keys: Vec<ConfigFileInfo>) -> TokenStr
 
     let mut config_paths_init = TokenStream::new();
     for ConfigFileInfo {
+        span,
         file_format,
         env_key,
         clap_long,
@@ -128,7 +129,7 @@ pub(super) fn gen_config_file_data(config_keys: Vec<ConfigFileInfo>) -> TokenStr
         default_path,
     } in config_keys
     {
-        config_paths_init.extend(quote! {
+        config_paths_init.extend(quote_spanned! {span=>
             if let ::std::result::Result::Err(err) = (|| {
                 let mut err_msg = ::std::vec![];
 
@@ -283,12 +284,11 @@ pub(super) fn struct_initialization(
         let clap_app = #clap_app;
         #sources
 
-        let clap_data = match clap_data {
+        let clap_data = &match clap_data {
             ::std::option::Option::Some(data) => data,
             ::std::option::Option::None => #clap_data?,
         };
-        let clap_data = &clap_data;
-        let env_data = match env_data {
+        let env_data = &match env_data {
             ::std::option::Option::Some(data) => data,
             ::std::option::Option::None => #env_data?
         };
@@ -313,7 +313,6 @@ pub(super) fn struct_initialization(
             });
 
     let init_body = quote! {
-        #[allow(unused_braces)]
         ::std::result::Result::<_, ::config_manager::Error>::Ok(
             #class_ident {
                 #fields_initialization
