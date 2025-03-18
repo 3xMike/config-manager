@@ -29,10 +29,126 @@ pub(crate) const ALLOWED_CRATE_ATTRS: &[&str] = &[
     CLAP_KEY,
 ];
 pub(crate) const ALLOWED_FLATTEN_ATTRS: &[&str] = &[TABLE_NAME_KEY, SOURCE_ORDER_KEY];
-pub(crate) const ALLOWED_CLAP_APP_ATTRS: &[&str] =
-    &["name", "version", "author", "about", "long_about"];
-pub(crate) const ALLOWED_CLAP_FIELD_ATTRS: &[&str] =
-    &["help", "long_help", "short", "long", "flag", "help_heading"];
+pub(crate) const ALLOWED_CLAP_APP_ATTRS: &[&str] = &[
+    "name",
+    "version",
+    "author",
+    "about",
+    "long_about",
+    "color",
+    "styles",
+    "term_width",
+    "max_term_width",
+    "disable_version_flag",
+    "next_line_help",
+    "disable_help_flag",
+    "disable_colored_help",
+    "help_expected",
+    "hide_possible_values",
+    "bin_name",
+    "display_name",
+    "after_help",
+    "after_long_help",
+    "before_help",
+    "before_long_help",
+    "long_version",
+    "override_usage",
+    "override_help",
+    "help_template",
+    "next_help_heading",
+    "next_display_order",
+    "allow_missing_positional",
+    "arg_required_else_help",
+];
+
+pub(crate) const ALLOWED_CLAP_FIELD_ATTRS: &[&str] = &[
+    "help",
+    "long_help",
+    "short",
+    "long",
+    "flag",
+    "help_heading",
+    "alias",
+    "short_alias",
+    "aliases",
+    "short_aliases",
+    "visible_alias",
+    "visible_short_alias",
+    "visible_aliases",
+    "visible_short_aliases",
+    "index",
+    "last",
+    "requires",
+    "exclusive",
+    "value_name",
+    "value_hint",
+    "ignore_case",
+    "allow_hyphen_values",
+    "allow_negative_numbers",
+    "require_equals",
+    "display_order",
+    "next_line_help",
+    "hide",
+    "hide_possible_values",
+    "hide_default_value",
+    "hide_short_help",
+    "hide_long_help",
+    "conflicts_with",
+    "conflicts_with_all",
+    "overrides_with",
+    "overrides_with_all",
+];
+
+pub(crate) const CLAP_FLAG_ATTRIBUTES: &[&str] = &[
+    // Command
+    "disable_version_flag",
+    "next_line_help",
+    "disable_help_flag",
+    "disable_colored_help",
+    "help_expected",
+    "hide_possible_values",
+    "allow_missing_positional",
+    "arg_required_else_help",
+    // Arg
+    "flag",
+    "last",
+    "exclusive",
+    "ignore_case",
+    "allow_hyphen_values",
+    "allow_negative_numbers",
+    "require_equals",
+    "next_line_help",
+    "hide",
+    "hide_possible_values",
+    "hide_default_value",
+    "hide_short_help",
+    "hide_long_help",
+];
+
+pub(crate) const CLAP_MULTIVALUES_FIELD_ATTRIBUTES: &[&str] = &[
+    "aliases",
+    "short_aliases",
+    "visible_aliases",
+    "visible_short_aliases",
+    "conflicts_with_all",
+    "overrides_with_all",
+];
+pub(crate) const CLAP_ATTRIBUTE_TAKES_CHAR: &[&str] = &[
+    "short",
+    "short_alias",
+    "visible_short_alias",
+    "short_aliases",
+    "visible_short_aliases",
+];
+pub(crate) const CLAP_ATTRIBUTE_TAKES_INT: &[&str] = &[
+    "term_width",
+    "max_term_width",
+    "next_display_order",
+    "index",
+    "display_order",
+];
+pub(crate) const CLAP_ATTRIBUTE_TAKES_CODE: &[&str] = &["color", "styles", "value_hint"];
+// todo: INDEX, aliases, short_aliases
 
 #[derive(EnumIter, strum_macros::Display)]
 pub(super) enum TopLevelAttr {

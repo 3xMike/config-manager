@@ -31,38 +31,23 @@ impl ToTokens for NormalClapFieldInfo {
         tokens.extend({
             let span = self.span;
             let name = self.long.clone();
-            let long = quote_spanned!(span=> .long(#name));
-            let short = match &self.short {
-                None => TokenStream::new(),
-                Some(short) => quote_spanned!(span=> .short(#short)),
+            let mut attrs = self.attributes.clone();
+            let mut field = quote_spanned! {span=>
+                clap::Arg::new(#name).long(#name).required(false)
             };
-            let flag = if self.flag {
+
+            field.extend(if attrs.remove("flag").is_some() {
                 quote_spanned!(span=> .num_args(0..=1).default_missing_value("true"))
             } else {
                 quote_spanned!(span=> .num_args(1))
-            };
-            let help = match &self.help {
-                None => TokenStream::new(),
-                Some(help) => quote_spanned!(span=> .help(#help)),
-            };
-            let long_help = match &self.long_help {
-                None => TokenStream::new(),
-                Some(long_help) => quote_spanned!(span=> .long_help(#long_help)),
-            };
-            let help_heading = match &self.help_heading {
-                None => TokenStream::new(),
-                Some(help_heading) => quote_spanned!(span=> .help_heading(#help_heading)),
-            };
-            quote_spanned! {self.span=>
-                clap::Arg::new(#name)
-                #long
-                #short
-                #flag
-                #help
-                #long_help
-                #help_heading
-                .required(false)
+            });
+
+            for (attr, val) in attrs {
+                let method_name = Ident::new(&attr, span);
+                field.extend(quote_spanned!(span=> .#method_name(#val)));
             }
+
+            field
         })
     }
 }

@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2022 JSRPC “Kryptonite”
 
+use std::collections::HashMap;
+
 use super::{attributes::*, meta_value_lit};
 use crate::utils::field::utils::{ExtractedAttributes, FieldAttribute};
 use crate::*;
@@ -32,10 +34,7 @@ impl AppTopLevelInfo {
 pub(crate) struct NormalClapAppInfo {
     pub(crate) span: Span,
     pub(crate) name: TokenStream,
-    pub(crate) version: Option<TokenStream>,
-    pub(crate) author: Option<TokenStream>,
-    pub(crate) about: Option<TokenStream>,
-    pub(crate) long_about: Option<TokenStream>,
+    pub(crate) attributes: HashMap<String, TokenStream>,
 }
 
 impl Default for NormalClapAppInfo {
@@ -43,10 +42,7 @@ impl Default for NormalClapAppInfo {
         Self {
             span: Span::call_site(),
             name: Default::default(),
-            version: Default::default(),
-            author: Default::default(),
-            about: Default::default(),
-            long_about: Default::default(),
+            attributes: Default::default(),
         }
     }
 }
@@ -56,30 +52,13 @@ impl ToTokens for NormalClapAppInfo {
         tokens.extend({
             let name = &self.name;
             let span = self.span;
-            let name = quote_spanned!(span=> clap::Command::new(#name));
-            let version = match &self.version {
-                None => TokenStream::new(),
-                Some(version) => quote_spanned!(span=> .version(#version)),
-            };
-            let author = match &self.author {
-                None => TokenStream::new(),
-                Some(author) => quote_spanned!(span=> .author(#author)),
-            };
-            let about = match &self.about {
-                None => TokenStream::new(),
-                Some(about) => quote_spanned!(span=> .about(#about)),
-            };
-            let long_about = match &self.long_about {
-                None => TokenStream::new(),
-                Some(long_about) => quote_spanned!(span=> .long_about(#long_about)),
-            };
-            quote_spanned! {span=>
-                #name
-                #version
-                #author
-                #about
-                #long_about
+            let mut app = quote_spanned!(span=> clap::Command::new(#name));
+            for (attr, val) in self.attributes.clone() {
+                let method_name = Ident::new(&attr, span);
+                app.extend(quote_spanned!(span=> .#method_name(#val)));
             }
+
+            app
         })
     }
 }
