@@ -33,6 +33,7 @@ pub(crate) const ALLOWED_CLAP_APP_ATTRS: &[&str] =
     &["name", "version", "author", "about", "long_about"];
 pub(crate) const ALLOWED_CLAP_FIELD_ATTRS: &[&str] =
     &["help", "long_help", "short", "long", "flag", "help_heading"];
+pub(crate) const CLAP_FLAG_ATTRIBUTES: &[&str] = &["flag"];
 
 #[derive(EnumIter, strum_macros::Display)]
 pub(super) enum TopLevelAttr {

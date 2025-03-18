@@ -3,7 +3,7 @@
 
 pub(crate) mod utils;
 
-use std::default::Default;
+use std::{collections::HashMap, default::Default};
 
 use super::attributes::*;
 use crate::*;
@@ -22,11 +22,7 @@ pub(crate) struct NormalClapFieldInfo {
     pub(crate) span: Span,
 
     pub(crate) long: TokenStream,
-    pub(crate) short: Option<TokenStream>,
-    pub(crate) help: Option<TokenStream>,
-    pub(crate) long_help: Option<TokenStream>,
-    pub(crate) flag: bool,
-    pub(crate) help_heading: Option<TokenStream>,
+    pub(crate) attributes: HashMap<String, TokenStream>,
 }
 
 pub(crate) struct ProcessFieldResult {

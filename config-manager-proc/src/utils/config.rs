@@ -97,7 +97,7 @@ fn handle_file_attribute(attr: &Meta) -> Result<ParsedConfigFileAttributes> {
         );
     }
     if let Some(clap_info) = &clap_info {
-        if let ClapOption::None | ClapOption::Empty = clap_info.long {
+        if !clap_info.has_explicit_long() {
             panic_span!(
                 clap_info.span,
                 "if #[clap] attribute is specified for configuration file, nested `long = ...` \
