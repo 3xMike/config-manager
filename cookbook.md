@@ -22,6 +22,10 @@
             - [Flatten attributes](#flatten-attributes)
         - [Subcommand](#subcommand)
     - [get\_command](#get_command)
+- [Appendix](#appendix)
+    - [Allowed clap attributes](#clap-attributes)
+    - [App attributes](#clap-command)
+    - [Field attributes](#clap-arg)
 
 ## Examples
 
@@ -187,9 +191,9 @@ In this case, the initialization order for the `iter` field is:
 
 ### `clap`
 
-Clap app attributes: `name`, `version`, `author`, `about`, `long_about`.
+Clap app attributes, like `name`, `version`, etc. Full list of supported clap attributes can be checked in the [Appendix](#clap-command)
 
-If on of the attributes is used without value (for example: `clap(name)`):
+**Note**: Following attributes can be used without value (for example: `clap(name)`):
 - `name`: will be taken as package from Cargo.toml,
 - `version`: will be taken as crate version from Cargo.toml,
 - `author`: will be taken as crate authors from Cargo.toml,
@@ -304,16 +308,15 @@ configuration file by the `frame_rate` key.
 
 #### `clap`
 
-Clap-crate attributes. Available nested attributes: `help`, `long_help`, `help_heading`, `short`, `long`, `flag`,
-`flatten`, `subcommand`.
+Clap-crate field attributes, like `long`, `short`. Full list of supported clap attributes can be checked in the [Appendix](#clap-arg).
 
-If on of the attributes is used without value (for example: `clap(short)`):
+**Note:** There is a new attribute: `flag`. If used on `field: bool`, this field can be set via CLI like a flag: `--field`. \
+**Note:** Following attributes can be used without value (for example: `clap(short)`):
+- `long`: the field name,
+- `short`: the first letter of the field name,
 - `help`: will be taken from doc comments of the field (aka `///` or `/** */`),
 - `long_help`: will be taken from doc comments of the field (aka `///` or `/** */`),
-- `help_heading`: forbidden,
-- `short`: the first letter of the field name,
-- `long`: the field name,
-- `flag`: only the short form allowed.
+
 
 **Note:** `#[source(clap)]` is equivalent to `#[source(clap(long))]` \
 **Note:** boolean fields can be marked as `#[source(clap(flag))]` that allow to set it as `true` with no value provided. \
@@ -473,3 +476,26 @@ fn init_from_app() -> Option<Config> {
     }
 }
 ```
+
+# Appendix
+## Clap attributes
+All the attributes should be set in the form: 
+```rust
+#[clap(attribute = value)]
+```
+Where `value` is the code that should be passed to the corresponding clap method (or no value, if the attribute is a flag). For example:
+```rust
+#[clap(value_hint = ValueHint::Username, short_aliases = ['c', 'e'], long = "my_field", exclusive)]
+field: usize,
+```
+Full usage can be checked [here](./tests/parse_method/get_command.rs#L41)
+### Clap command
+Documentation on original methods: [clap::Command](https://docs.rs/clap/latest/clap/struct.Command.html)
+
+Next attributes are allowed: \
+name, version, author, about, long_about, color, styles, term_width, max_term_width, disable_version_flag, next_line_help, disable_help_flag, disable_colored_help, help_expected, hide_possible_values, bin_name, display_name, after_help, after_long_help, before_help, before_long_help, long_version, override_usage, override_help, help_template, next_help_heading, next_display_order, allow_missing_positional, arg_required_else_help,
+### Clap arg
+Documentation on original methods: [clap::Arg](https://docs.rs/clap/latest/clap/struct.Arg.html)
+
+Next attributes are allowed: \
+help, long_help, short, long, flag, help_heading, alias, short_alias, aliases, short_aliases, visible_alias, visible_short_alias, visible_aliases, visible_short_aliases, index, last, requires, exclusive, value_name, value_hint, ignore_case, allow_hyphen_values, allow_negative_numbers, require_equals, display_order, next_line_help, hide, hide_possible_values, hide_default_value, hide_short_help, hide_long_help, conflicts_with, conflicts_with_all, overrides_with, overrides_with_all,
