@@ -24,8 +24,8 @@
     - [get\_command](#get_command)
 - [Appendix](#appendix)
     - [Allowed clap attributes](#clap-attributes)
-    - [App attributes](#clap-command)
-    - [Field attributes](#clap-arg)
+        - [App attributes](#clap-command)
+        - [Field attributes](#clap-arg)
 
 ## Examples
 

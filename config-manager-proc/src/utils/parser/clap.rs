@@ -122,8 +122,7 @@ pub(crate) fn parse_clap_app_attribute(
         } else {
             panic_span!(
                 attr.span(),
-                "clap attibute \"{attr_name}\" is not supported, allowed attrs: {:?}",
-                ALLOWED_CLAP_APP_ATTRS
+                "clap attibute \"{attr_name}\" is not supported",
             )
         }
     }
@@ -235,8 +234,7 @@ pub(crate) fn parse_clap_field_attribute(
         } else {
             panic_span!(
                 attr.span(),
-                "clap attibute \"{attr_name}\" is not supported, allowed attrs: {:?}",
-                ALLOWED_CLAP_FIELD_ATTRS
+                "clap attibute \"{attr_name}\" is not supported",
             )
         }
     }
