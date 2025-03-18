@@ -7,6 +7,8 @@ use crate::*;
 pub(crate) enum AcceptedLiterals {
     String,
     Char,
+    Int,
+    Code,
 }
 
 pub(crate) fn match_literal_or_init_from(
@@ -33,6 +35,14 @@ pub(crate) fn match_literal_or_init_from(
                     panic_span!(attribute.span(), "expected char, got {:#?}", lit);
                 }
             }
+            AcceptedLiterals::Int => {
+                if matches!(lit, Lit::Int(_) | Lit::Float(_)) {
+                    lit.to_token_stream()
+                } else {
+                    panic_span!(attribute.span(), "expected char, got {:#?}", lit);
+                }
+            }
+            AcceptedLiterals::Code => lit.to_token_stream(),
         })),
         Meta::List(list) => {
             let args = list.parse_args_with(Punctuated::<Meta, Token![,]>::parse_terminated)?;

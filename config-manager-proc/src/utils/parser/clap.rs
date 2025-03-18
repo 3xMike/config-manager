@@ -34,8 +34,22 @@ impl<T> ClapOption<T> {
     }
 }
 
-fn meta_to_maybe(meta: &Meta) -> Result<MaybeString> {
-    Ok(match_literal_or_init_from(meta, AcceptedLiterals::String)?
+fn clap_attr_parser(attr: &Meta) -> Result<MaybeString> {
+    let name = path_to_string(attr.path());
+    let name = &name.as_str();
+    let accepted_value = if CLAP_MULTIVALUES_FIELD_ATTRIBUTES.contains(name)
+        || CLAP_ATTRIBUTE_TAKES_CODE.contains(name)
+    {
+        AcceptedLiterals::Code
+    } else if CLAP_ATTRIBUTE_TAKES_CHAR.contains(name) {
+        AcceptedLiterals::Char
+    } else if CLAP_ATTRIBUTE_TAKES_INT.contains(name) {
+        AcceptedLiterals::Int
+    } else {
+        AcceptedLiterals::String
+    };
+
+    Ok(match_literal_or_init_from(attr, accepted_value)?
         .map(ClapOption::Some)
         .unwrap_or(ClapOption::Empty))
 }
@@ -60,6 +74,34 @@ impl ClapAppParseResult {
     }
 }
 
+fn generic_attributes(
+    parsed: HashMap<String, MaybeString>,
+    span: Span,
+) -> Result<HashMap<String, TokenStream>> {
+    let mut res = HashMap::new();
+    for (attr, val) in parsed {
+        let flag = CLAP_FLAG_ATTRIBUTES.contains(&attr.as_str());
+        match (val, flag) {
+            (ClapOption::None, _) => (),
+            (ClapOption::Empty, true) => {
+                res.insert(attr, quote_spanned!(span=> true));
+            }
+            (ClapOption::Empty, false) => panic_span!(
+                span,
+                "clap attribute \"{attr}\" must take value(s), can't be empty"
+            ),
+            (ClapOption::Some(v), true) => panic_span!(
+                v.span(),
+                "clap attribute \"{attr}\" can't take any value(s), it's a flag"
+            ),
+            (ClapOption::Some(v), false) => {
+                res.insert(attr, v);
+            }
+        }
+    }
+    Ok(res)
+}
+
 pub(crate) fn parse_clap_app_attribute(
     attributes: &MetaList,
     docs: Option<String>,
@@ -76,7 +118,7 @@ pub(crate) fn parse_clap_app_attribute(
             if !matches!(not_set, ClapOption::None) {
                 panic_span!(attr.span(), "trying to set clap({attr_name}) twice");
             }
-            *not_set = meta_to_maybe(attr)?;
+            *not_set = clap_attr_parser(attr)?;
         } else {
             panic_span!(
                 attr.span(),
@@ -128,26 +170,8 @@ impl ClapAppParseResult {
             attributes.insert("about".to_string(), v);
         }
         // Generic ones
-        for (attr, val) in self.attributes {
-            let flag = CLAP_FLAG_ATTRIBUTES.contains(&attr.as_str());
-            match (val, flag) {
-                (ClapOption::None, _) => (),
-                (ClapOption::Empty, true) => {
-                    attributes.insert(attr, quote_spanned!(span=> true));
-                }
-                (ClapOption::Empty, false) => panic_span!(
-                    span,
-                    "clap attribute \"{attr}\" must take value(s), can't be empty"
-                ),
-                (ClapOption::Some(v), true) => panic_span!(
-                    v.span(),
-                    "clap attribute \"{attr}\" can't take any value(s), it's a flag"
-                ),
-                (ClapOption::Some(v), false) => {
-                    attributes.insert(attr, v);
-                }
-            }
-        }
+        attributes.extend(generic_attributes(self.attributes, span)?);
+
         Ok(NormalClapAppInfo {
             span,
             name,
@@ -207,13 +231,7 @@ pub(crate) fn parse_clap_field_attribute(
                 panic_span!(attr.span(), "Only boolean arguments can be flags")
             }
 
-            *not_set = if attr_name == "short" {
-                match_literal_or_init_from(attr, AcceptedLiterals::Char)?
-                    .map(ClapOption::Some)
-                    .unwrap_or(ClapOption::Empty)
-            } else {
-                meta_to_maybe(attr)?
-            };
+            *not_set = clap_attr_parser(attr)?;
         } else {
             panic_span!(
                 attr.span(),
@@ -280,26 +298,7 @@ impl ClapFieldParseResult {
         }
 
         // Generic ones
-        for (attr, val) in self.attributes {
-            let flag = CLAP_FLAG_ATTRIBUTES.contains(&attr.as_str());
-            match (val, flag) {
-                (ClapOption::None, _) => (),
-                (ClapOption::Empty, true) => {
-                    attributes.insert(attr, quote_spanned!(span=> true));
-                }
-                (ClapOption::Empty, false) => panic_span!(
-                    span,
-                    "clap attribute \"{attr}\" must take value(s), can't be empty"
-                ),
-                (ClapOption::Some(v), true) => panic_span!(
-                    v.span(),
-                    "clap attribute \"{attr}\" can't take any value(s), it's a flag"
-                ),
-                (ClapOption::Some(v), false) => {
-                    attributes.insert(attr, v);
-                }
-            }
-        }
+        attributes.extend(generic_attributes(self.attributes, span)?);
 
         Ok(NormalClapFieldInfo {
             span,
