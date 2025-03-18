@@ -17,33 +17,39 @@ pub(crate) fn match_literal_or_init_from(
 ) -> Result<Option<TokenStream>> {
     match attribute {
         Meta::Path(_) => Ok(None),
-        Meta::NameValue(MetaNameValue {
-            value: Expr::Lit(ExprLit { lit, .. }),
-            ..
-        }) => Ok(Some(match accepted_literals {
-            AcceptedLiterals::String => {
-                if matches!(lit, Lit::Str(_)) {
-                    lit.to_token_stream()
-                } else {
-                    panic_span!(attribute.span(), "expected string, got {:#?}", lit);
-                }
+        Meta::NameValue(MetaNameValue { value, .. }) => {
+            if matches!(accepted_literals, AcceptedLiterals::Code) {
+                return Ok(Some(value.to_token_stream()));
             }
-            AcceptedLiterals::Char => {
-                if matches!(lit, Lit::Char(_)) {
-                    lit.to_token_stream()
-                } else {
-                    panic_span!(attribute.span(), "expected char, got {:#?}", lit);
+            let lit = match value {
+                Expr::Lit(ExprLit { lit, .. }) => lit,
+                other => panic_span!(
+                    attribute.span(),
+                    "Unknown attribute meta {}",
+                    other.to_token_stream()
+                ),
+            };
+            let code = lit.to_token_stream();
+            match accepted_literals {
+                AcceptedLiterals::String => {
+                    if !matches!(lit, Lit::Str(_)) {
+                        panic_span!(attribute.span(), "expected string, got {code}");
+                    }
                 }
-            }
-            AcceptedLiterals::Int => {
-                if matches!(lit, Lit::Int(_) | Lit::Float(_)) {
-                    lit.to_token_stream()
-                } else {
-                    panic_span!(attribute.span(), "expected char, got {:#?}", lit);
+                AcceptedLiterals::Char => {
+                    if !matches!(lit, Lit::Char(_)) {
+                        panic_span!(attribute.span(), "expected char, got {code}");
+                    }
                 }
+                AcceptedLiterals::Int => {
+                    if !matches!(lit, Lit::Int(_) | Lit::Float(_)) {
+                        panic_span!(attribute.span(), "expected char, got {code}");
+                    }
+                }
+                AcceptedLiterals::Code => unreachable!(),
             }
-            AcceptedLiterals::Code => lit.to_token_stream(),
-        })),
+            Ok(Some(lit.to_token_stream()))
+        }
         Meta::List(list) => {
             let args = list.parse_args_with(Punctuated::<Meta, Token![,]>::parse_terminated)?;
 
@@ -66,11 +72,6 @@ pub(crate) fn match_literal_or_init_from(
                 ),
             }
         }
-        other => panic_span!(
-            attribute.span(),
-            "Unknown attribute meta {}",
-            other.to_token_stream()
-        ),
     }
 }
 

@@ -133,10 +133,21 @@ pub(crate) const CLAP_MULTIVALUES_FIELD_ATTRIBUTES: &[&str] = &[
     "conflicts_with_all",
     "overrides_with_all",
 ];
-pub(crate) const CLAP_ATTRIBUTE_TAKES_CHAR: &[&str] =
-    &["short", "short_aliases", "visible_short_aliases"];
-pub(crate) const CLAP_ATTRIBUTE_TAKES_INT: &[&str] = &["index", "term_width", "max_term_width"];
-pub(crate) const CLAP_ATTRIBUTE_TAKES_CODE: &[&str] = &["color", "styles"];
+pub(crate) const CLAP_ATTRIBUTE_TAKES_CHAR: &[&str] = &[
+    "short",
+    "short_alias",
+    "visible_short_alias",
+    "short_aliases",
+    "visible_short_aliases",
+];
+pub(crate) const CLAP_ATTRIBUTE_TAKES_INT: &[&str] = &[
+    "term_width",
+    "max_term_width",
+    "next_display_order",
+    "index",
+    "display_order",
+];
+pub(crate) const CLAP_ATTRIBUTE_TAKES_CODE: &[&str] = &["color", "styles", "value_hint"];
 // todo: INDEX, aliases, short_aliases
 
 #[derive(EnumIter, strum_macros::Display)]
