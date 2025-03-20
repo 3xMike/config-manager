@@ -60,18 +60,16 @@ pub(crate) struct ExtractedAttributes {
     pub(crate) deserializer: Option<(TokenStream, Span)>,
 }
 
-impl std::default::Default for ExtractedAttributes {
-    fn default() -> Self {
+impl ExtractedAttributes {
+    pub(crate) fn new(span: Span) -> Self {
         Self {
-            span: Span::call_site(),
+            span,
             variables: vec![],
             default: None,
             deserializer: None,
         }
     }
-}
 
-impl ExtractedAttributes {
     fn deserializer(&self) -> TokenStream {
         let span = self.span;
         match &self.deserializer {
@@ -313,7 +311,7 @@ pub(super) fn extract_attributes(
     let is_string = is_string(&field.ty);
     let docs = extract_docs(&field.attrs);
 
-    let mut res = ExtractedAttributes::default();
+    let mut res = ExtractedAttributes::new(field.span());
 
     let attr = match field.attrs.iter().find(|a| a.path().is_ident(SOURCE_KEY)) {
         None => return Ok(None),

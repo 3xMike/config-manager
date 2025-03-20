@@ -46,7 +46,9 @@ pub(crate) fn process_field(
                 FieldAttribute::Env(Default::default()),
                 FieldAttribute::Config(Default::default()),
             ],
-            ..Default::default()
+            span: field.span(),
+            default: None,
+            deserializer: None,
         });
 
     Ok(ProcessFieldResult {

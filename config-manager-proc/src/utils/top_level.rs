@@ -37,16 +37,6 @@ pub(crate) struct NormalClapAppInfo {
     pub(crate) attributes: HashMap<String, TokenStream>,
 }
 
-impl Default for NormalClapAppInfo {
-    fn default() -> Self {
-        Self {
-            span: Span::call_site(),
-            name: Default::default(),
-            attributes: Default::default(),
-        }
-    }
-}
-
 impl ToTokens for NormalClapAppInfo {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         tokens.extend({
@@ -129,7 +119,7 @@ pub(crate) fn extract_source_order(attrs: &[Meta]) -> Result<Option<ExtractedAtt
     })?;
     let nested = list.parse_args_with(Punctuated::<Meta, Token![,]>::parse_terminated)?;
 
-    let mut res = ExtractedAttributes::default();
+    let mut res = ExtractedAttributes::new(meta.span());
     for meta in nested {
         let p = meta
             .require_path_only()

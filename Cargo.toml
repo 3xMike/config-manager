@@ -3,7 +3,7 @@ members = ["config-manager-proc", "examples"]
 
 [package]
 name = "config-manager"
-version = "0.4.2"
+version = "0.4.3"
 edition = "2021"
 authors = [
     "Mikhail Mikhailov <m.mikhailov@kryptonite.ru>",
@@ -19,7 +19,7 @@ categories = ["config", "development-tools", "command-line-utilities"]
 [dependencies]
 clap = { version = "4.0.29", features = ["derive", "cargo"] }
 config = "0.13.0"
-config-manager-proc = { path = "./config-manager-proc", version = "0.4.2" }
+config-manager-proc = { path = "./config-manager-proc", version = "0.4.3" }
 ctor = "0.1.23"
 deser-hjson = "1.0.2"
 serde = { version = "1.0", features = ["derive"] }
