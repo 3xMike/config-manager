@@ -9,6 +9,7 @@ use super::meta_value_lit;
 pub(crate) const CLAP_KEY: &str = "clap";
 pub(crate) const ENV_KEY: &str = "env";
 pub(crate) const CONFIG_KEY: &str = "config";
+pub(crate) const DOCS_KEY: &str = "doc";
 pub(crate) const DESERIALIZER: &str = "deserialize_with";
 pub(crate) const DEFAULT: &str = "default";
 pub(crate) const ENV_PREFIX_KEY: &str = "env_prefix";
@@ -27,8 +28,9 @@ pub(crate) const ALLOWED_CRATE_ATTRS: &[&str] = &[
     TABLE_NAME_KEY,
     SOURCE_ORDER_KEY,
     CLAP_KEY,
+    DOCS_KEY,
 ];
-pub(crate) const ALLOWED_FLATTEN_ATTRS: &[&str] = &[TABLE_NAME_KEY, SOURCE_ORDER_KEY];
+pub(crate) const ALLOWED_FLATTEN_ATTRS: &[&str] = &[TABLE_NAME_KEY, SOURCE_ORDER_KEY, DOCS_KEY];
 pub(crate) const ALLOWED_CLAP_APP_ATTRS: &[&str] = &[
     "name",
     "version",

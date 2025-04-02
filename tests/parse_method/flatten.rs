@@ -6,6 +6,7 @@ use serde::Deserialize;
 use crate::{assert_ok_and_compare, set_env, test_env};
 
 fn simple_flatten() {
+    /// Comments
     #[derive(Debug, PartialEq, Deserialize, config_manager::Flatten)]
     struct Nested {
         #[source(clap, env, config)]
@@ -16,6 +17,7 @@ fn simple_flatten() {
         map_even: HashMap<String, bool>,
     }
 
+    /// Comments
     #[derive(Debug, PartialEq)]
     #[config(
         env_prefix = "",
