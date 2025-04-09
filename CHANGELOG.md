@@ -5,6 +5,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased] - ReleaseDate
+## [0.4.5](https://github.com/3xMike/config-manager/releases/tag/0.4.5) - 2025-04-09
+### Fixed
+- clippy::needless_return on `file()` attribute.
+
 ## [0.4.4](https://github.com/3xMike/config-manager/releases/tag/0.4.4) - 2025-04-02
 ### Fixed
 - Macro panic on Flatten docs.

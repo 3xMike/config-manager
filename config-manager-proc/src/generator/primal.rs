@@ -160,9 +160,9 @@ pub(super) fn gen_config_file_data(config_keys: Vec<ConfigFileInfo>) -> TokenStr
                 if #is_optional {
                     return ::std::result::Result::Ok(());
                 }
-                return ::std::result::Result::Err(::config_manager::Error::MissingArgument(
+                ::std::result::Result::Err(::config_manager::Error::MissingArgument(
                     err_msg
-                ));
+                ))
             })() {
                 return ::std::result::Result::Err(err);
             };
